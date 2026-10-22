@@ -1,0 +1,10 @@
+{
+  "shift_type": "Night",
+  "task_status": "Pending",
+  "severity_score": 0.95,
+  "tool_wear_min": 210,
+  "air_temp_k": 302.1,
+  "process_temp_k": 311.4,
+  "rotational_speed": 1380,
+  "resolution_time": 240
+}

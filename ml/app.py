@@ -1,7 +1,8 @@
 """Flask service that serves the trained XGBoost risk model.
 
-Expects ml/model/xgb_pipeline.pkl and ml/model/model_meta.json (download both from
-Drive: incident-risk-predictor-files/model_checkpoints/). Node.js calls POST /predict.
+Expects ml/model/xgb_pipeline.pkl, ml/model/model_meta.json and (on Windows)
+ml/model/xgb_model.ubj (download from Drive: incident-risk-predictor-files/model_checkpoints/).
+Node.js calls POST /predict.
 """
 import json
 import os
@@ -10,12 +11,35 @@ import joblib
 import numpy as np
 import pandas as pd
 import shap
+import xgboost as xgb
 from flask import Flask, jsonify, request
 from scipy import sparse
 
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model')
 
-pipeline = joblib.load(os.path.join(MODEL_DIR, 'xgb_pipeline.pkl'))
+
+def load_pipeline():
+    """Load the pipeline, taking the XGBoost model from xgb_model.ubj when it exists.
+
+    A booster pickled on Linux (Colab) fails to unpickle on Windows with "input stream
+    corrupted" (the saved random-generator state differs by platform). The .ubj file is
+    XGBoost's portable format, so the pickled booster is skipped and replaced by it.
+    """
+    pkl = os.path.join(MODEL_DIR, 'xgb_pipeline.pkl')
+    ubj = os.path.join(MODEL_DIR, 'xgb_model.ubj')
+    if not os.path.exists(ubj):
+        return joblib.load(pkl)
+    setstate = xgb.Booster.__setstate__
+    xgb.Booster.__setstate__ = lambda self, state: None
+    try:
+        pipe = joblib.load(pkl)
+    finally:
+        xgb.Booster.__setstate__ = setstate
+    pipe.named_steps['model']._Booster = xgb.Booster(model_file=ubj)
+    return pipe
+
+
+pipeline = load_pipeline()
 with open(os.path.join(MODEL_DIR, 'model_meta.json')) as f:
     meta = json.load(f)
 

@@ -1,7 +1,7 @@
 """Flask service that serves the trained XGBoost risk model.
 
 Expects ml/model/xgb_pipeline.pkl and ml/model/model_meta.json (download both from
-Drive: incident-risk-predictor/model_checkpoints/). Node.js calls POST /predict.
+Drive: incident-risk-predictor-files/model_checkpoints/). Node.js calls POST /predict.
 """
 import json
 import os

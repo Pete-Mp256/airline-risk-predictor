@@ -1,9 +1,11 @@
+# Pin scikit-learn, xgboost, imbalanced-learn and pandas to the exact versions
+# printed in model/model_meta.json ("versions"), or the .pkl may fail to load.
 flask
-flask-cors
-xgboost
-scikit-learn
-pandas
-numpy
-shap
-imbalanced-learn
 joblib
+numpy
+pandas
+scipy
+scikit-learn
+xgboost
+imbalanced-learn
+shap

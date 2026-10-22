@@ -24,4 +24,22 @@ env/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Local Claude Code notes (not shared)
+CLAUDE.local.md
 .idea/
+
+# Data, models and plots live on Google Drive (incident-risk-predictor-files), never in git
+*.csv
+*.xlsx
+*.parquet
+*.joblib
+*.png
+datasets/
+model_checkpoints/
+reports/
+ml/model/*
+!ml/model/.gitkeep
+
+# Jupyter
+.ipynb_checkpoints/

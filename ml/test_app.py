@@ -41,6 +41,7 @@ def test_predict_valid(client):
     assert set(body['probabilities']) == set(app.LABELS)
     assert sum(body['probabilities'].values()) == pytest.approx(1, abs=0.01)
     assert body['confidence'] == body['probabilities'][body['risk_level']]
+    assert body['high_threshold'] == app.HIGH_T
     assert len(body['top_factors']) == 3
     for factor in body['top_factors']:
         assert factor['feature'] in app.FEATURES

@@ -100,6 +100,7 @@ def predict_with_reasons(row, top_n=3):
         'risk_level': LABELS[k],
         'confidence': round(float(proba[k]), 3),
         'probabilities': {l: round(float(p), 3) for l, p in zip(LABELS, proba)},
+        'high_threshold': HIGH_T,
         'top_factors': [
             {'feature': f, 'value': row[f],
              'effect': 'raises' if v > 0 else 'lowers', 'impact': round(float(v), 3)}

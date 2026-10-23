@@ -2,6 +2,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import IncidentDetailPage from './pages/IncidentDetailPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -34,7 +35,7 @@ export default function App() {
             <Route index element={<Navigate to="/shifts" replace />} />
             <Route path="/shifts" element={<ShiftsPage />} />
             <Route path="/shifts/:id" element={<ShiftDetailPage />} />
-            <Route path="/incidents/:id" element={<PlaceholderPage title="Incident" issue={23} />} />
+            <Route path="/incidents/:id" element={<IncidentDetailPage />} />
             <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" issue={24} />} />
             <Route path="*" element={<NotFound />} />
           </Route>

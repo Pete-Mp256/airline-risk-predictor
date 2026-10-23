@@ -77,7 +77,7 @@ export default function NewShiftForm({ departments, onCreated, onCancel }) {
 
   return (
     <form onSubmit={handleSubmit} className="card space-y-4" noValidate>
-      <h2 className="text-lg font-semibold">New shift</h2>
+      <h2 className="section-title">New shift</h2>
       {message && <p className="alert-error" role="alert">{message}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

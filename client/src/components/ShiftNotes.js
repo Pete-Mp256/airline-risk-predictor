@@ -38,7 +38,7 @@ export default function ShiftNotes({ shift, canEdit, onSaved }) {
   if (editing) {
     return (
       <form onSubmit={save} className="card space-y-3">
-        <h2 className="text-lg font-semibold">Handover notes</h2>
+        <h2 className="section-title">Handover notes</h2>
         {error && <p className="alert-error" role="alert">{error}</p>}
         <div>
           <label htmlFor="notes" className="label">Notes for the next shift</label>
@@ -60,7 +60,7 @@ export default function ShiftNotes({ shift, canEdit, onSaved }) {
   return (
     <section className="card">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-lg font-semibold">Handover notes</h2>
+        <h2 className="section-title">Handover notes</h2>
         {canEdit && <button type="button" className="btn-secondary px-3 py-1.5" onClick={startEdit}>Edit</button>}
       </div>
       {shift.notes ? (

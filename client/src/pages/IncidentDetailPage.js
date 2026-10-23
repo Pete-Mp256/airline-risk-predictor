@@ -28,7 +28,7 @@ export default function IncidentDetailPage() {
     return (
       <div className="space-y-3">
         <p className="alert-error" role="alert">{error}</p>
-        <Link to="/shifts" className="text-sm text-sky-700 hover:underline">Back to shifts</Link>
+        <Link to="/shifts" className="text-sm text-accent-700 hover:underline">Back to shifts</Link>
       </div>
     );
   }
@@ -49,9 +49,12 @@ export default function IncidentDetailPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to={`/shifts/${incident.shift_id}`} className="text-sm text-sky-700 hover:underline">← Back to shift</Link>
+        <Link to={`/shifts/${incident.shift_id}`} className="link text-sm">← Back to shift</Link>
+        <p className="mt-2 text-xs text-slate-500">
+          {formatDateTime(incident.occurred_at)} · {incident.shift_type} shift · {incident.department_name}
+        </p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{incident.incident_type}</h1>
+          <h1 className="page-title">{incident.incident_type}</h1>
           <RiskBadge level={latest?.risk_level} confidence={latest?.confidence} />
         </div>
         <p className="mt-1 text-sm text-slate-600">{incident.description}</p>
@@ -59,7 +62,7 @@ export default function IncidentDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card">
-          <h2 className="text-lg font-semibold">Risk prediction</h2>
+          <h2 className="section-title">Risk prediction</h2>
           <div className="mt-3">
             {latest ? (
               <PredictionResult prediction={latest} />
@@ -70,7 +73,7 @@ export default function IncidentDetailPage() {
         </section>
 
         <section className="card space-y-4">
-          <h2 className="text-lg font-semibold">Details</h2>
+          <h2 className="section-title">Details</h2>
           <dl className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5 text-sm">
             {details.map(([label, value]) => (
               <div key={label} className="contents">
@@ -95,7 +98,7 @@ export default function IncidentDetailPage() {
 
       {predictions.length > 0 && (
         <section className="card">
-          <h2 className="text-lg font-semibold">Prediction history</h2>
+          <h2 className="section-title">Prediction history</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
@@ -107,7 +110,7 @@ export default function IncidentDetailPage() {
                   <th className="py-2 text-right">Response</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200">
                 {predictions.map((p) => (
                   <tr key={p.prediction_id}>
                     <td className="py-2 pr-4">{formatDateTime(p.created_at)}</td>

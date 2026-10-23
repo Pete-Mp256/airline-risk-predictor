@@ -112,6 +112,17 @@ describe('POST /api/auth/login', () => {
   });
 });
 
+describe('GET /api/departments', () => {
+  test('lists departments without a token', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ department_id: 1, name: 'Line Maintenance' }] });
+
+    const res = await request(app).get('/api/departments');
+
+    expect(res.status).toBe(200);
+    expect(res.body.departments).toHaveLength(1);
+  });
+});
+
 describe('GET /api/auth/me', () => {
   test('returns the logged-in manager for a valid token', async () => {
     pool.query.mockResolvedValueOnce({ rows: [manager] });

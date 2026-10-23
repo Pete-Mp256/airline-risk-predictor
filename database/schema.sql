@@ -1,4 +1,5 @@
 -- Incident Risk Predictor - PostgreSQL schema
+-- Model inputs follow ml/model/model_meta.json: shift_type, task_status and six numeric features.
 
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS incident_predictions CASCADE;
@@ -8,10 +9,15 @@ DROP TABLE IF EXISTS shifts CASCADE;
 DROP TABLE IF EXISTS shift_managers CASCADE;
 DROP TABLE IF EXISTS departments CASCADE;
 DROP TYPE IF EXISTS risk_level;
+DROP TYPE IF EXISTS shift_type;
+DROP TYPE IF EXISTS task_status;
 
 CREATE TYPE risk_level AS ENUM ('Low', 'Medium', 'High');
+CREATE TYPE shift_type AS ENUM ('Morning', 'Afternoon', 'Night');
+-- Same labels the model was trained on; Node maps pending/in-progress/complete to these.
+CREATE TYPE task_status AS ENUM ('Pending', 'In Progress', 'Complete');
 
--- DEPARTMENTS
+-- DEPARTMENTS (stored for the dashboard, not a model feature)
 CREATE TABLE departments (
     department_id   SERIAL PRIMARY KEY,
     name            VARCHAR(100) NOT NULL UNIQUE,
@@ -39,6 +45,7 @@ CREATE TABLE shifts (
     shift_id        SERIAL PRIMARY KEY,
     manager_id      INTEGER NOT NULL REFERENCES shift_managers(manager_id) ON DELETE RESTRICT,
     department_id   INTEGER NOT NULL REFERENCES departments(department_id) ON DELETE RESTRICT,
+    shift_type      shift_type NOT NULL,
     shift_date      DATE NOT NULL,
     start_time      TIMESTAMPTZ NOT NULL,
     end_time        TIMESTAMPTZ NOT NULL,
@@ -62,8 +69,7 @@ CREATE TABLE tasks (
     task_type           VARCHAR(50),
     complexity          SMALLINT CHECK (complexity BETWEEN 1 AND 5),
     estimated_hours     NUMERIC(5,2) CHECK (estimated_hours >= 0),
-    status              VARCHAR(20) NOT NULL DEFAULT 'Pending'
-                        CHECK (status IN ('Pending', 'In Progress', 'Completed', 'Deferred')),
+    status              task_status NOT NULL DEFAULT 'Pending',
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -71,36 +77,45 @@ CREATE INDEX idx_tasks_shift ON tasks(shift_id);
 CREATE INDEX idx_tasks_status ON tasks(status);
 
 -- INCIDENTS
+-- shift_type comes from the shift; task_status is a snapshot of the task when the incident was logged.
 CREATE TABLE incidents (
-    incident_id     SERIAL PRIMARY KEY,
-    shift_id        INTEGER NOT NULL REFERENCES shifts(shift_id) ON DELETE CASCADE,
-    task_id         INTEGER REFERENCES tasks(task_id) ON DELETE SET NULL,
-    reported_by     INTEGER REFERENCES shift_managers(manager_id) ON DELETE SET NULL,
-    incident_type   VARCHAR(50) NOT NULL,
-    severity        risk_level NOT NULL,
-    description     TEXT NOT NULL,
-    occurred_at     TIMESTAMPTZ NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    incident_id         SERIAL PRIMARY KEY,
+    shift_id            INTEGER NOT NULL REFERENCES shifts(shift_id) ON DELETE CASCADE,
+    task_id             INTEGER REFERENCES tasks(task_id) ON DELETE SET NULL,
+    reported_by         INTEGER REFERENCES shift_managers(manager_id) ON DELETE SET NULL,
+    incident_type       VARCHAR(50) NOT NULL,
+    description         TEXT NOT NULL,
+    reported_severity   risk_level,
+    occurred_at         TIMESTAMPTZ NOT NULL,
+    task_status         task_status NOT NULL,
+    severity_score      NUMERIC(6,4) NOT NULL CHECK (severity_score BETWEEN 0 AND 1),
+    tool_wear_min       INTEGER NOT NULL CHECK (tool_wear_min >= 0),
+    air_temp_k          NUMERIC(6,2) NOT NULL CHECK (air_temp_k > 0),
+    process_temp_k      NUMERIC(6,2) NOT NULL CHECK (process_temp_k > 0),
+    rotational_speed    INTEGER NOT NULL CHECK (rotational_speed > 0),
+    resolution_time     INTEGER NOT NULL CHECK (resolution_time >= 0),  -- minutes
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_incidents_shift ON incidents(shift_id);
 CREATE INDEX idx_incidents_task ON incidents(task_id);
 CREATE INDEX idx_incidents_occurred_at ON incidents(occurred_at);
 
--- INCIDENT_PREDICTIONS
+-- INCIDENT_PREDICTIONS (one row per call to the Flask /predict endpoint)
 CREATE TABLE incident_predictions (
     prediction_id       SERIAL PRIMARY KEY,
-    shift_id            INTEGER NOT NULL REFERENCES shifts(shift_id) ON DELETE CASCADE,
-    task_id             INTEGER REFERENCES tasks(task_id) ON DELETE CASCADE,
+    incident_id         INTEGER NOT NULL REFERENCES incidents(incident_id) ON DELETE CASCADE,
     risk_level          risk_level NOT NULL,
     confidence          NUMERIC(5,4) NOT NULL CHECK (confidence BETWEEN 0 AND 1),
-    contributing_factors JSONB,
+    probabilities       JSONB NOT NULL,   -- {"Low": .., "Medium": .., "High": ..}
+    top_factors         JSONB,            -- [{feature, value, effect, impact}, ...]
+    high_threshold      NUMERIC(4,3),     -- model_meta.json high_threshold at prediction time
     model_version       VARCHAR(50),
+    response_ms         INTEGER,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_predictions_shift ON incident_predictions(shift_id);
-CREATE INDEX idx_predictions_task ON incident_predictions(task_id);
+CREATE INDEX idx_predictions_incident ON incident_predictions(incident_id);
 CREATE INDEX idx_predictions_risk_level ON incident_predictions(risk_level);
 
 -- NOTIFICATIONS

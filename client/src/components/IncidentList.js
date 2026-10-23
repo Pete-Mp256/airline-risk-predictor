@@ -13,8 +13,8 @@ export default function IncidentList({ incidents, action, children }) {
   return (
     <section className="card">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">
-          Incidents <span className="text-sm font-normal text-slate-500">({incidents.length})</span>
+        <h2 className="section-title">
+          Incidents <span className="text-sm font-normal normal-case tracking-normal text-slate-500">({incidents.length})</span>
         </h2>
         {action}
       </div>
@@ -23,10 +23,10 @@ export default function IncidentList({ incidents, action, children }) {
       {sorted.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No incidents logged on this shift.</p>
       ) : (
-        <ul className="mt-3 divide-y divide-slate-100">
+        <ul className="mt-3 space-y-2">
           {sorted.map((i) => (
             <li key={i.incident_id}>
-              <Link to={`/incidents/${i.incident_id}`} className="-mx-2 flex flex-wrap items-start justify-between gap-3 rounded-md px-2 py-3 hover:bg-slate-50">
+              <Link to={`/incidents/${i.incident_id}`} className="tile flex flex-wrap items-start justify-between gap-3 transition hover:ring-accent-300">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{i.incident_type}</p>
                   <p className="text-sm text-slate-600">{i.description}</p>

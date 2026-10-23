@@ -1,38 +1,47 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+import { Link, NavLink, Outlet } from 'react-router-dom';
+import { PlaneIcon } from './Icons';
 import NotificationBell from './NotificationBell';
+import ProfileMenu from './ProfileMenu';
 
-const linkClass = ({ isActive }) =>
-  `rounded-md px-3 py-2 text-sm font-medium ${
-    isActive ? 'bg-sky-50 text-sky-800' : 'text-slate-600 hover:bg-slate-100'
-  }`;
+const NAV = [
+  { to: '/shifts', label: 'Shifts' },
+  { to: '/dashboard', label: 'Dashboard' },
+];
+
+export function Logo() {
+  return (
+    <span className="flex items-center gap-2 text-slate-900">
+      <PlaneIcon className="h-6 w-6" />
+      <span className="text-lg font-medium uppercase tracking-[0.08em]">Incident Risk</span>
+    </span>
+  );
+}
 
 export default function Layout() {
-  const { manager, logout } = useAuth();
-
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-3">
-          <span className="mr-4 font-semibold text-sky-800">Incident Risk Predictor</span>
-          <nav className="flex gap-1">
-            <NavLink to="/shifts" className={linkClass}>Shifts</NavLink>
-            <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
+    <div className="px-3 py-4 sm:px-6 sm:py-8">
+      <div className="shell">
+        <header className="flex flex-wrap items-center gap-3 px-5 pt-5 sm:px-8 sm:pt-7">
+          <Link to="/shifts" aria-label="Incident Risk home"><Logo /></Link>
+          <nav className="order-last flex w-full justify-center sm:order-none sm:ml-auto sm:w-auto" aria-label="Main">
+            <div className="flex gap-1 rounded-full bg-white p-1 ring-1 ring-slate-200">
+              {NAV.map((item) => (
+                <NavLink key={item.to} to={item.to}
+                  className={({ isActive }) => (isActive ? 'pill-active' : 'pill')}>
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <NotificationBell />
-            <span className="hidden text-sm text-slate-600 sm:inline">
-              {manager.first_name} {manager.last_name}
-            </span>
-            <button type="button" onClick={logout} className="btn-secondary px-3 py-1.5">
-              Log out
-            </button>
+            <ProfileMenu />
           </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <Outlet />
-      </main>
+        </header>
+        <main className="px-5 pb-8 pt-6 sm:px-8">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

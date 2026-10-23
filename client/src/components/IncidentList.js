@@ -5,7 +5,7 @@ import { RiskBadge } from './Badges';
 const RISK_ORDER = { High: 0, Medium: 1, Low: 2 };
 
 // Incidents on a shift, highest predicted risk first.
-export default function IncidentList({ incidents, action }) {
+export default function IncidentList({ incidents, action, children }) {
   const sorted = [...incidents].sort(
     (a, b) => (RISK_ORDER[a.risk_level] ?? 3) - (RISK_ORDER[b.risk_level] ?? 3)
   );
@@ -18,6 +18,7 @@ export default function IncidentList({ incidents, action }) {
         </h2>
         {action}
       </div>
+      {children && <div className="mt-3">{children}</div>}
 
       {sorted.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No incidents logged on this shift.</p>

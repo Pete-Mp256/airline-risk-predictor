@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api, { apiError } from '../api';
 import { useAuth } from '../auth/AuthContext';
+import IncidentForm from '../components/IncidentForm';
 import IncidentList from '../components/IncidentList';
 import ShiftNotes from '../components/ShiftNotes';
 import TaskList from '../components/TaskList';
@@ -13,6 +14,7 @@ export default function ShiftDetailPage() {
   const { manager } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [logging, setLogging] = useState(false);
 
   const load = useCallback(() => {
     setError('');
@@ -69,7 +71,18 @@ export default function ShiftDetailPage() {
             onChange={(next) => setData((d) => ({ ...d, tasks: next }))}
           />
         </div>
-        <IncidentList incidents={incidents} />
+        <IncidentList
+          incidents={incidents}
+          action={isOwner && !logging && (
+            <button type="button" className="btn-primary px-3 py-1.5" onClick={() => setLogging(true)}>
+              Log incident
+            </button>
+          )}
+        >
+          {logging && (
+            <IncidentForm shift={shift} tasks={tasks} onLogged={load} onClose={() => setLogging(false)} />
+          )}
+        </IncidentList>
       </div>
     </div>
   );

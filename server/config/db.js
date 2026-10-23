@@ -1,5 +1,10 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 require('dotenv').config();
+
+// DATE -> 'YYYY-MM-DD' string (the default JS Date shifts it by the server's UTC offset).
+types.setTypeParser(types.builtins.DATE, (value) => value);
+// NUMERIC -> number (values here are small: scores, temperatures, hours).
+types.setTypeParser(types.builtins.NUMERIC, (value) => (value === null ? null : parseFloat(value)));
 
 const pool = new Pool({
   host: process.env.DB_HOST,

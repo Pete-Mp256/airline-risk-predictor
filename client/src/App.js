@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PlaceholderPage from './pages/PlaceholderPage';
+import ShiftDetailPage from './pages/ShiftDetailPage';
+import ShiftsPage from './pages/ShiftsPage';
 
 function NotFound() {
   return (
@@ -30,7 +32,8 @@ export default function App() {
             }
           >
             <Route index element={<Navigate to="/shifts" replace />} />
-            <Route path="/shifts" element={<PlaceholderPage title="Shifts" issue={22} />} />
+            <Route path="/shifts" element={<ShiftsPage />} />
+            <Route path="/shifts/:id" element={<ShiftDetailPage />} />
             <Route path="/incidents/:id" element={<PlaceholderPage title="Incident" issue={23} />} />
             <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" issue={24} />} />
             <Route path="*" element={<NotFound />} />

@@ -230,10 +230,12 @@ async function getIncident(req, res, next) {
 
   try {
     const incidentResult = await pool.query(
-      `SELECT i.*, s.shift_type, s.shift_date, d.name AS department_name
+      `SELECT i.*, s.shift_type, s.shift_date, s.manager_id AS shift_manager_id,
+              d.name AS department_name, t.title AS task_title
          FROM incidents i
          JOIN shifts s ON s.shift_id = i.shift_id
          JOIN departments d ON d.department_id = s.department_id
+         LEFT JOIN tasks t ON t.task_id = i.task_id
         WHERE i.incident_id = $1`,
       [incidentId]
     );

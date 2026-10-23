@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
+const departmentRoutes = require('./routes/departments');
 const shiftRoutes = require('./routes/shifts');
 const taskRoutes = require('./routes/tasks');
 const incidentRoutes = require('./routes/incidents');
@@ -16,6 +17,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/departments', departmentRoutes);
 app.use('/api/shifts', shiftRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/incidents', incidentRoutes);

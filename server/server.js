@@ -1,16 +1,13 @@
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
 
-const app = express();
+if (!process.env.JWT_SECRET) {
+  console.error('JWT_SECRET is not set. Add it to server/.env');
+  process.exit(1);
+}
+
+const app = require('./app');
+
 const PORT = process.env.PORT || 5000;
-
-app.use(cors());
-app.use(express.json());
-
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

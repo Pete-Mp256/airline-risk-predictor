@@ -42,8 +42,8 @@ function AddTaskForm({ shiftId, onAdded, onCancel }) {
   const error = (name) => errors[name] && <p className="field-error">{errors[name]}</p>;
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4" noValidate>
-      <h3 className="text-sm font-semibold">Add task</h3>
+    <form onSubmit={handleSubmit} className="mt-4 space-y-3 tile" noValidate>
+      <h3 className="section-title">Add task</h3>
       {message && <p className="alert-error" role="alert">{message}</p>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="sm:col-span-2 lg:col-span-3">
@@ -118,8 +118,8 @@ export default function TaskList({ shiftId, tasks, canEdit, onChange }) {
   return (
     <section className="card">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">
-          Tasks <span className="text-sm font-normal text-slate-500">({openCount} open of {tasks.length})</span>
+        <h2 className="section-title">
+          Tasks <span className="text-sm font-normal normal-case tracking-normal text-slate-500">({openCount} open of {tasks.length})</span>
         </h2>
         {canEdit && !adding && (
           <button type="button" className="btn-secondary px-3 py-1.5" onClick={() => setAdding(true)}>Add task</button>
@@ -130,9 +130,9 @@ export default function TaskList({ shiftId, tasks, canEdit, onChange }) {
       {tasks.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No tasks on this shift.</p>
       ) : (
-        <ul className="mt-3 divide-y divide-slate-100">
+        <ul className="mt-3 space-y-2">
           {tasks.map((t) => (
-            <li key={t.task_id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+            <li key={t.task_id} className="tile flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{t.title}</p>
                 <p className="text-xs text-slate-500">

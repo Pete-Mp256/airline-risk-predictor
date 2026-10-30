@@ -20,6 +20,14 @@ export function formatDateTime(value) {
     : '';
 }
 
+// "8h", "7h 30m"
+export function formatDuration(start, end) {
+  const minutes = Math.round((new Date(end) - new Date(start)) / 60000);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
 // Value for <input type="datetime-local"> in the browser's time zone.
 export function toLocalInput(date) {
   const pad = (n) => String(n).padStart(2, '0');

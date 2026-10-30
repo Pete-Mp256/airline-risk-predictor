@@ -12,8 +12,8 @@ import ShiftsPage from './pages/ShiftsPage';
 function NotFound() {
   return (
     <div className="card">
-      <h1 className="text-xl font-semibold">Page not found</h1>
-      <Link to="/shifts" className="mt-2 inline-block text-sm text-sky-700 hover:underline">Go to shifts</Link>
+      <h1 className="section-title">Page not found</h1>
+      <Link to="/shifts" className="mt-2 inline-block text-sm text-accent-700 hover:underline">Go to shifts</Link>
     </div>
   );
 }

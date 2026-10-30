@@ -6,7 +6,7 @@ const RISK_STYLES = {
 
 const STATUS_STYLES = {
   Pending: 'bg-slate-100 text-slate-700 ring-slate-500/20',
-  'In Progress': 'bg-sky-50 text-sky-800 ring-sky-600/30',
+  'In Progress': 'bg-accent-50 text-accent-800 ring-accent-600/30',
   Complete: 'bg-emerald-50 text-emerald-800 ring-emerald-600/30',
 };
 

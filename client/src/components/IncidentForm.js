@@ -78,10 +78,10 @@ export default function IncidentForm({ shift, tasks, onLogged, onClose }) {
   if (result) {
     const { incident, prediction, prediction_error: predictionError } = result;
     return (
-      <div className="space-y-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+      <div className="space-y-4 tile">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-semibold">Incident logged: {incident.incident_type}</h3>
-          <Link to={`/incidents/${incident.incident_id}`} className="text-sm text-sky-700 hover:underline">
+          <h3 className="section-title">Incident logged: {incident.incident_type}</h3>
+          <Link to={`/incidents/${incident.incident_id}`} className="text-sm text-accent-700 hover:underline">
             Open incident
           </Link>
         </div>
@@ -111,8 +111,8 @@ export default function IncidentForm({ shift, tasks, onLogged, onClose }) {
   const error = (name) => errors[name] && <p className="field-error">{errors[name]}</p>;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-md border border-slate-200 bg-slate-50 p-4" noValidate>
-      <h3 className="font-semibold">Log incident</h3>
+    <form onSubmit={handleSubmit} className="space-y-4 tile" noValidate>
+      <h3 className="section-title">Log incident</h3>
       {message && <p className="alert-error" role="alert">{message}</p>}
 
       <div className="grid gap-3 sm:grid-cols-2">

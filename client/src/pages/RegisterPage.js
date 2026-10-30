@@ -62,7 +62,7 @@ export default function RegisterPage() {
     <AuthCard
       title="Create an account"
       subtitle="Register as a shift manager."
-      footer={<>Already registered? <Link to="/login" className="font-medium text-sky-700 hover:underline">Log in</Link></>}
+      footer={<>Already registered? <Link to="/login" className="font-medium text-accent-700 hover:underline">Log in</Link></>}
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         {message && <p className="alert-error" role="alert">{message}</p>}

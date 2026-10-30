@@ -251,4 +251,4 @@ async function getIncident(req, res, next) {
   }
 }
 
-module.exports = { createIncident, predictIncident, listIncidents, getIncident };
+module.exports = { createIncident, predictIncident, listIncidents, getIncident, LATEST_PREDICTION };

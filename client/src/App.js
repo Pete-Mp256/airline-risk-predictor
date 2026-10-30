@@ -2,10 +2,10 @@ import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import DashboardPage from './pages/DashboardPage';
 import IncidentDetailPage from './pages/IncidentDetailPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import PlaceholderPage from './pages/PlaceholderPage';
 import ShiftDetailPage from './pages/ShiftDetailPage';
 import ShiftsPage from './pages/ShiftsPage';
 
@@ -36,7 +36,7 @@ export default function App() {
             <Route path="/shifts" element={<ShiftsPage />} />
             <Route path="/shifts/:id" element={<ShiftDetailPage />} />
             <Route path="/incidents/:id" element={<IncidentDetailPage />} />
-            <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" issue={24} />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

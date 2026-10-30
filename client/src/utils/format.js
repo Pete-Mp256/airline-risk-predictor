@@ -8,6 +8,12 @@ export function formatDate(value) {
   });
 }
 
+// 'YYYY-MM-DD' -> "24 Oct", for chart axes.
+export function formatShortDate(value) {
+  if (!value) return '';
+  return new Date(`${value.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 export function formatTime(value) {
   return value ? new Date(value).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
 }

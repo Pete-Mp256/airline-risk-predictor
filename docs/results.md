@@ -124,3 +124,55 @@ Discussion points for the report:
   performance came from recognising the source dataset.
 - Threshold tuning helps less here (+0.017 High recall vs +0.049 before).
 - Random Forest slightly outperforms XGBoost once the proxy feature is removed.
+
+## System testing (end to end)
+
+Run on 2 Nov 2026 on the development laptop (Windows 11, PostgreSQL 18, Flask dev server,
+Node/Express, all on localhost), from a fresh start of every service.
+
+### Response times (30 incidents, mixed Low/Medium/High inputs)
+
+| Path | Median (ms) | Mean | p95 | Max |
+|---|---|---|---|---|
+| Flask `POST /predict` alone (incl. SHAP) | 67.9 | 66.9 | 81.9 | 89.4 |
+| Node → Flask (`incident_predictions.response_ms`) | 64 | 65.5 | 81 | 85 |
+| `POST /api/incidents` as the client sees it (insert + predict + store + notify) | 82.3 | 85.4 | 119 | 153 |
+| `GET /api/dashboard/summary?days=30` (10 calls, warm) | – | 37.5 | – | 226 |
+
+- The first prediction after Flask starts takes about 320 ms (lazy model/SHAP warm-up); after that
+  it is steady around 65 ms. The first dashboard call is also slower (≈390 ms) than warm calls.
+- Every prediction is well under the 2 s target, so prediction on incident create does not need
+  a background job.
+
+### Worked examples (logged through the incident form API, Night shift)
+
+| Input | Prediction | Top 3 SHAP reasons (toward the predicted class) |
+|---|---|---|
+| Complete, severity 0.12, tool wear 25, resolution 30 | **Low** 0.909 | air_temp_k 298.1 (+0.66), rotational_speed 1550 (+0.47), resolution_time 30 (+0.46) |
+| In Progress, severity 0.90, tool wear 50, resolution 60 | **Medium** 0.985 | severity_score 0.90 (+1.03), resolution_time 60 (+0.35), process_temp_k 310.5 (+0.19) |
+| Pending, severity 0.95, tool wear 210, resolution 240 | **High** 0.922 | severity_score 0.95 (+1.17), tool_wear_min 210 (+1.13), rotational_speed 1380 (−0.25) |
+
+The High example created a notification for the shift manager: "High risk incident #13
+(Hardware) on the Night shift. Top factor: severity_score."
+
+### Failure handling
+
+| Case | Result |
+|---|---|
+| Flask stopped, incident logged | 201, incident saved, `prediction: null`, `prediction_error: "Risk prediction service unavailable"` (109 ms) |
+| Retry `POST /api/incidents/:id/predict` while Flask still starting | 503 with message, nothing stored |
+| Retry after Flask is up | 201, Medium 0.985, stored with `response_ms` 56 |
+
+### Automated tests
+
+- Server (Jest + Supertest): 4 suites, 51 tests pass.
+- Flask (pytest): 6 tests pass.
+
+### Observations for the report
+
+- **Medium depends on `severity_score`.** A grid over severity 0.3–0.9, tool wear, task status and
+  resolution time gave Medium only at severity 0.9 (23 of 90 inputs); a "middle" input (severity
+  0.55) was predicted Low at 0.998. `severity_score` is derived from the incident priority that also
+  drives `risk_level`, so it is close to a proxy for the label. List under limitations.
+- SHAP `effect` is relative to the predicted class: for a Low prediction "raises" means it pushes
+  toward Low, not toward higher risk. The UI wording should make this clear.

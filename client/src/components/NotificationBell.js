@@ -75,7 +75,7 @@ export default function NotificationBell() {
       >
         <BellIcon />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-semibold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-accent-600 px-1 text-xs font-semibold text-white">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
@@ -93,10 +93,10 @@ export default function NotificationBell() {
                   <button
                     type="button"
                     onClick={() => openNotification(n)}
-                    className={`block w-full px-4 py-3 text-left text-sm hover:bg-slate-50 ${n.is_read ? 'text-slate-500' : 'bg-red-50/60 text-slate-800'}`}
+                    className={`block w-full px-4 py-3 text-left text-sm hover:bg-slate-50 ${n.is_read ? 'text-slate-500' : 'bg-accent-50/60 text-ink'}`}
                   >
                     <span className="flex items-start gap-2">
-                      {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-red-600" />}
+                      {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent-600" />}
                       <span>
                         {n.message}
                         <span className="mt-0.5 block text-xs text-slate-400">{timeAgo(n.created_at)}</span>

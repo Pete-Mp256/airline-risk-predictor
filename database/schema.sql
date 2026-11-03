@@ -1,6 +1,7 @@
 -- Incident Risk Predictor - PostgreSQL schema
 -- Model inputs follow ml/model/model_meta.json: shift_type, task_status and six numeric features.
 
+DROP TABLE IF EXISTS login_codes CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS incident_predictions CASCADE;
 DROP TABLE IF EXISTS incidents CASCADE;
@@ -39,6 +40,15 @@ CREATE TABLE shift_managers (
 );
 
 CREATE INDEX idx_shift_managers_department ON shift_managers(department_id);
+
+-- LOGIN_CODES (email 2FA: one active code per manager, stored as a SHA-256 hash)
+CREATE TABLE login_codes (
+    manager_id      INTEGER PRIMARY KEY REFERENCES shift_managers(manager_id) ON DELETE CASCADE,
+    code_hash       CHAR(64) NOT NULL,
+    attempts        SMALLINT NOT NULL DEFAULT 0,
+    expires_at      TIMESTAMPTZ NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- SHIFTS
 CREATE TABLE shifts (

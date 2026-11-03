@@ -50,13 +50,24 @@ export function AuthProvider({ children }) {
     setManager(m);
   }, []);
 
-  const login = useCallback(
-    async (email, password) => {
-      const res = await api.post('/auth/login', { email, password });
+  // A correct password emails a 2FA code: returns { pending_token, email } for verifyCode.
+  const login = useCallback(async (email, password) => {
+    const res = await api.post('/auth/login', { email, password });
+    return res.data;
+  }, []);
+
+  const verifyCode = useCallback(
+    async (pendingToken, code) => {
+      const res = await api.post('/auth/verify-2fa', { pending_token: pendingToken, code });
       startSession(res.data);
     },
     [startSession]
   );
+
+  const resendCode = useCallback(async (pendingToken) => {
+    const res = await api.post('/auth/resend-code', { pending_token: pendingToken });
+    return res.data;
+  }, []);
 
   const register = useCallback(
     async (form) => {
@@ -67,8 +78,8 @@ export function AuthProvider({ children }) {
   );
 
   const value = useMemo(
-    () => ({ manager, loading, login, register, logout }),
-    [manager, loading, login, register, logout]
+    () => ({ manager, loading, login, verifyCode, resendCode, register, logout }),
+    [manager, loading, login, verifyCode, resendCode, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

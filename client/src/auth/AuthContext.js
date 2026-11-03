@@ -64,6 +64,15 @@ export function AuthProvider({ children }) {
     [startSession]
   );
 
+  // Google sign-ins skip the email code and start the session directly.
+  const googleSignIn = useCallback(
+    async (credential) => {
+      const res = await api.post('/auth/google', { credential });
+      startSession(res.data);
+    },
+    [startSession]
+  );
+
   const resendCode = useCallback(async (pendingToken) => {
     const res = await api.post('/auth/resend-code', { pending_token: pendingToken });
     return res.data;
@@ -78,8 +87,8 @@ export function AuthProvider({ children }) {
   );
 
   const value = useMemo(
-    () => ({ manager, loading, login, verifyCode, resendCode, register, logout }),
-    [manager, loading, login, verifyCode, resendCode, register, logout]
+    () => ({ manager, loading, login, verifyCode, resendCode, googleSignIn, register, logout }),
+    [manager, loading, login, verifyCode, resendCode, googleSignIn, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

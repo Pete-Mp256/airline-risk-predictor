@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const pool = require('../config/db');
 const { sendMail } = require('../services/mailer');
 
@@ -8,6 +9,8 @@ const TOKEN_EXPIRES_IN = '8h'; // one shift
 const CODE_TTL_MINUTES = 10; // email 2FA code and the pending token that goes with it
 const CODE_MAX_ATTEMPTS = 5;
 const RESEND_COOLDOWN_SECONDS = 60;
+
+const googleClient = new OAuth2Client();
 const BCRYPT_ROUNDS = 10;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -151,8 +154,8 @@ async function login(req, res, next) {
       [email.trim().toLowerCase()]
     );
     const found = rows[0];
-    // Same message for unknown email and wrong password
-    if (!found || !(await bcrypt.compare(password, found.password_hash))) {
+    // Same message for unknown email, wrong password and Google-only accounts (no password)
+    if (!found || !found.password_hash || !(await bcrypt.compare(password, found.password_hash))) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
     if (!found.is_active) {
@@ -166,6 +169,76 @@ async function login(req, res, next) {
       email: maskEmail(found.email),
     });
   } catch (err) {
+    next(err);
+  }
+}
+
+// Sign in with Google: the client sends the Google ID token (credential). Google has already
+// verified the person, so this skips the email 2FA code and returns a session straight away.
+async function googleSignIn(req, res, next) {
+  const { credential } = req.body || {};
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(503).json({ message: 'Google sign-in is not configured on the server' });
+  }
+  if (isBlank(credential)) {
+    return res.status(400).json({ message: 'Google credential is required' });
+  }
+
+  let profile;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    profile = ticket.getPayload();
+  } catch {
+    return res.status(401).json({ message: 'Google sign-in failed. Try again.' });
+  }
+  if (!profile.email || !profile.email_verified) {
+    return res.status(401).json({ message: 'Your Google account email is not verified' });
+  }
+
+  const email = profile.email.toLowerCase();
+  try {
+    // Existing account: matched by Google ID, or linked on first Google sign-in by its verified email.
+    let { rows } = await pool.query(
+      `SELECT ${MANAGER_COLUMNS} FROM shift_managers WHERE google_id = $1`,
+      [profile.sub]
+    );
+    if (!rows[0]) {
+      ({ rows } = await pool.query(
+        `UPDATE shift_managers SET google_id = $1
+         WHERE email = $2 AND google_id IS NULL
+         RETURNING ${MANAGER_COLUMNS}`,
+        [profile.sub, email]
+      ));
+    }
+    let created = false;
+    if (!rows[0]) {
+      ({ rows } = await pool.query(
+        `INSERT INTO shift_managers (first_name, last_name, email, google_id)
+         VALUES ($1, $2, $3, $4)
+         RETURNING ${MANAGER_COLUMNS}`,
+        [
+          (profile.given_name || email.split('@')[0]).slice(0, 50),
+          (profile.family_name || '-').slice(0, 50),
+          email,
+          profile.sub,
+        ]
+      ));
+      created = true;
+    }
+
+    const manager = rows[0];
+    if (!manager.is_active) {
+      return res.status(403).json({ message: 'This account has been deactivated' });
+    }
+    res.status(created ? 201 : 200).json({ token: signToken(manager), manager, created });
+  } catch (err) {
+    // The email belongs to an account already linked to a different Google account.
+    if (err.code === '23505') {
+      return res.status(409).json({ message: 'This email is linked to a different Google account' });
+    }
     next(err);
   }
 }
@@ -267,4 +340,4 @@ async function me(req, res, next) {
   }
 }
 
-module.exports = { register, login, verifyCode, resendCode, me };
+module.exports = { register, login, googleSignIn, verifyCode, resendCode, me };

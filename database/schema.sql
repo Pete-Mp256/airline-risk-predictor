@@ -33,7 +33,8 @@ CREATE TABLE shift_managers (
     first_name      VARCHAR(50) NOT NULL,
     last_name       VARCHAR(50) NOT NULL,
     email           VARCHAR(255) NOT NULL UNIQUE,
-    password_hash   VARCHAR(255) NOT NULL,
+    password_hash   VARCHAR(255),           -- NULL for accounts that only sign in with Google
+    google_id       VARCHAR(255) UNIQUE,    -- Google account "sub", set on first Google sign-in
     phone           VARCHAR(20),
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()

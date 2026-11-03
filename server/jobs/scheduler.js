@@ -7,6 +7,7 @@ const cron = require('node-cron');
 const JOBS = [
   ['handover summary', require('./handoverSummary')],
   ['task reminders', require('./taskReminders')],
+  ['alert escalation', require('./alertEscalation')],
 ];
 
 function start() {

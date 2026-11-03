@@ -139,6 +139,7 @@ CREATE TABLE notifications (
     shift_id        INTEGER REFERENCES shifts(shift_id) ON DELETE CASCADE,  -- task reminders
     message         TEXT NOT NULL,
     is_read         BOOLEAN NOT NULL DEFAULT FALSE,
+    escalated_at    TIMESTAMPTZ,            -- set when an unread High risk alert is sent to a supervisor
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

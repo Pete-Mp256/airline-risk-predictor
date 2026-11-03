@@ -133,7 +133,35 @@ function emailTaskReminder({ shift, tasks, recipients }) {
   }));
 }
 
+// #40: a High risk alert that no notified manager has read in time, sent to a supervisor.
+function emailEscalation({ alert, minutes, recipients }) {
+  const link = appUrl(`/incidents/${alert.incident_id}`);
+  const confidence = `${Math.round(Number(alert.confidence) * 100)}%`;
+  const reasons = (alert.top_factors || []).slice(0, 3)
+    .map((f) => `${describeFeature(f.feature, f.value)} ${f.effect === 'raises' ? 'raised' : 'lowered'} the score`);
+  const managers = `${alert.notified} manager${alert.notified === 1 ? '' : 's'}`;
+  const summary =
+    `Incident #${alert.incident_id} (${alert.incident_type}) on the ${alert.shift_type} shift, ` +
+    `${alert.department_name}, managed by ${alert.manager_name}, was rated High risk (${confidence}) ` +
+    `at ${formatTime(alert.created_at)}. The alert went to ${managers} and none of them has opened it ` +
+    `after ${minutes} minutes.`;
+
+  return sendToEach(recipients, () => ({
+    subject: `Escalated: unread High risk alert, ${alert.incident_type} on the ${alert.shift_type} shift`,
+    text:
+      `${summary}\n\n` +
+      (reasons.length ? `Why:\n${reasons.map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\n` : '') +
+      `Follow up with the shift manager.\n${link}`,
+    html: layout(
+      `<p>${escapeHtml(summary)}</p>` +
+      (reasons.length ? `<p style="margin-bottom:4px">Why the model said this:</p><ol>${reasons.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ol>` : '') +
+      '<p>Follow up with the shift manager.</p>' +
+      button(link, 'Open the incident')
+    ),
+  }));
+}
+
 module.exports = {
   appUrl, formatTime, escapeHtml, layout, button, sendToEach,
-  emailHighRisk, emailHandoverSummary, emailTaskReminder,
+  emailHighRisk, emailHandoverSummary, emailTaskReminder, emailEscalation,
 };

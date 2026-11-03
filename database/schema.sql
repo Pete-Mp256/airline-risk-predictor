@@ -62,6 +62,7 @@ CREATE TABLE shifts (
     end_time        TIMESTAMPTZ NOT NULL,
     staff_count     INTEGER NOT NULL DEFAULT 0 CHECK (staff_count >= 0),
     notes           TEXT,
+    handover_sent_at TIMESTAMPTZ,           -- set when the end-of-shift summary email goes out
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_shift_times CHECK (end_time > start_time)
 );

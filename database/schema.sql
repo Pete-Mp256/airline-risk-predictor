@@ -82,6 +82,7 @@ CREATE TABLE tasks (
     complexity          SMALLINT CHECK (complexity BETWEEN 1 AND 5),
     estimated_hours     NUMERIC(5,2) CHECK (estimated_hours >= 0),
     status              task_status NOT NULL DEFAULT 'Pending',
+    reminder_sent_at    TIMESTAMPTZ,        -- set when the before-shift-end reminder goes out
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -135,6 +136,7 @@ CREATE TABLE notifications (
     notification_id SERIAL PRIMARY KEY,
     manager_id      INTEGER NOT NULL REFERENCES shift_managers(manager_id) ON DELETE CASCADE,
     prediction_id   INTEGER REFERENCES incident_predictions(prediction_id) ON DELETE CASCADE,
+    shift_id        INTEGER REFERENCES shifts(shift_id) ON DELETE CASCADE,  -- task reminders
     message         TEXT NOT NULL,
     is_read         BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()

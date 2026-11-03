@@ -109,6 +109,31 @@ function emailHandoverSummary({ shift, tasks, incidents, recipients }) {
   }));
 }
 
+// #39: tasks still open shortly before the shift ends.
+function emailTaskReminder({ shift, tasks, recipients }) {
+  const link = appUrl(`/shifts/${shift.shift_id}`);
+  const count = `${tasks.length} task${tasks.length === 1 ? '' : 's'}`;
+  const ends = formatTime(shift.end_time);
+  const line = (t) => `${t.title}${t.aircraft_reg ? ` (${t.aircraft_reg})` : ''}: ${t.status}`;
+
+  return sendToEach(recipients, (r) => ({
+    subject: `${count} still open on your ${shift.shift_type} shift`,
+    text:
+      `Hello ${r.first_name},\n\nYour ${shift.shift_type} shift ends at ${ends} and ${count} ` +
+      `${tasks.length === 1 ? 'is' : 'are'} still open:\n${tasks.map((t) => `- ${line(t)}`).join('\n')}\n\n` +
+      `Complete them, or add them to the handover notes for the next shift.\n${link}`,
+    html: layout(
+      `<p>Hello ${escapeHtml(r.first_name)},</p>` +
+      `<p>Your ${escapeHtml(shift.shift_type)} shift ends at <strong>${escapeHtml(ends)}</strong> and ` +
+      `${count} ${tasks.length === 1 ? 'is' : 'are'} still open:</p>` +
+      `<ul style="padding-left:18px">${tasks.map((t) => `<li>${escapeHtml(line(t))}</li>`).join('')}</ul>` +
+      '<p>Complete them, or add them to the handover notes for the next shift.</p>' +
+      button(link, 'Open the shift')
+    ),
+  }));
+}
+
 module.exports = {
-  appUrl, formatTime, escapeHtml, layout, button, sendToEach, emailHighRisk, emailHandoverSummary,
+  appUrl, formatTime, escapeHtml, layout, button, sendToEach,
+  emailHighRisk, emailHandoverSummary, emailTaskReminder,
 };

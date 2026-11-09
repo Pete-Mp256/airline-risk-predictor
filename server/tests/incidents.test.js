@@ -2,6 +2,7 @@
 process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../config/db', () => ({ query: jest.fn() }));
+jest.mock('../services/mailer', () => ({ sendMail: jest.fn().mockResolvedValue() }));
 jest.mock('../services/mlClient', () => {
   const actual = jest.requireActual('../services/mlClient');
   return { ...actual, predict: jest.fn() };
@@ -11,7 +12,11 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const mlClient = require('../services/mlClient');
+const { sendMail } = require('../services/mailer');
 const app = require('../app');
+
+// Lets the un-awaited High risk email finish before asserting on it.
+const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 const owner = jwt.sign({ manager_id: 1, department_id: 1 }, 'test-secret');
 const other = jwt.sign({ manager_id: 2, department_id: 2 }, 'test-secret');
@@ -56,6 +61,7 @@ function mockCreateQueries() {
 beforeEach(() => {
   pool.query.mockReset();
   mlClient.predict.mockReset();
+  sendMail.mockReset().mockResolvedValue();
 });
 
 describe('POST /api/incidents', () => {
@@ -99,6 +105,60 @@ describe('POST /api/incidents', () => {
     expect(params[0]).toBe(5);
     expect(params[1]).toMatch(/High risk incident #10/);
     expect(params.slice(2)).toEqual([1, 1]);
+  });
+
+  test('emails each notified manager the rating, reasons and a link on a High prediction', async () => {
+    mockCreateQueries();
+    mlClient.predict.mockResolvedValueOnce(mlResult('High'));
+    const prediction = { prediction_id: 5, risk_level: 'High', confidence: 0.92, top_factors: mlResult('High').result.top_factors };
+    pool.query
+      .mockResolvedValueOnce({ rows: [prediction] })
+      .mockResolvedValueOnce({ rows: [
+        { email: 'amina@example.com', first_name: 'Amina' },
+        { email: 'brian@example.com', first_name: 'Brian' },
+      ] });
+
+    const res = await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
+    await flush();
+
+    expect(res.status).toBe(201);
+    expect(sendMail).toHaveBeenCalledTimes(2);
+    const mail = sendMail.mock.calls[0][0];
+    expect(mail.to).toBe('amina@example.com');
+    expect(mail.subject).toBe('High risk: Power failure on the Night shift');
+    expect(mail.text).toMatch(/High risk \(92%\)/);
+    expect(mail.text).toMatch(/Severity score \(0\.95\) raised the score/);
+    expect(mail.text).toMatch(/\/incidents\/10/);
+  });
+
+  test('still returns 201 when the High risk email fails', async () => {
+    mockCreateQueries();
+    mlClient.predict.mockResolvedValueOnce(mlResult('High'));
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ prediction_id: 5, risk_level: 'High', confidence: 0.92, top_factors: [] }] })
+      .mockResolvedValueOnce({ rows: [{ email: 'amina@example.com', first_name: 'Amina' }] });
+    sendMail.mockRejectedValueOnce(new Error('SMTP down'));
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
+    await flush();
+
+    expect(res.status).toBe(201);
+    expect(res.body.prediction.risk_level).toBe('High');
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  test('does not email on a Low prediction', async () => {
+    mockCreateQueries();
+    mlClient.predict.mockResolvedValueOnce(mlResult('Low'));
+    pool.query.mockResolvedValueOnce({ rows: [{ prediction_id: 6, risk_level: 'Low' }] });
+
+    const res = await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
+    await flush();
+
+    expect(res.status).toBe(201);
+    expect(sendMail).not.toHaveBeenCalled();
   });
 
   test('keeps the incident when the model service is down', async () => {

@@ -34,3 +34,20 @@ INSERT INTO incidents (shift_id, task_id, reported_by, incident_type, descriptio
      'High', '2026-10-21 02:30+03', 'Pending', 0.9500, 210, 302.10, 311.40, 1380, 240),
     (3, 4, 2, 'Overstrain', 'Hydraulic rig overpressure warning on flap actuator test',
      NULL, '2026-10-21 17:05+03', 'In Progress', 0.8200, 230, 301.50, 310.90, 1290, 300);
+
+-- Handovers: shift 1 submitted to Brian (unfinished task carried over, its incidents, a note);
+-- shift 2 still a draft with no incoming manager yet.
+INSERT INTO handovers (shift_id, from_manager_id, to_manager_id, summary, status, submitted_at) VALUES
+    (1, 1, 2, 'Pressurisation fault on 5Y-KZC still open, waiting on outflow valve part.', 'Submitted', '2026-10-20 14:05+03'),
+    (2, 1, NULL, NULL, 'Draft', NULL);
+
+INSERT INTO handover_items (handover_id, item_type, task_id, incident_id, note, carried_over) VALUES
+    (1, 'Open task', 2, NULL, NULL, TRUE),
+    (1, 'Incident', NULL, 1, NULL, FALSE),
+    (1, 'Incident', NULL, 2, NULL, FALSE),
+    (1, 'Note', NULL, NULL, 'Torque wrench sent for recalibration, use the spare in bay 2.', FALSE),
+    (2, 'Open task', 3, NULL, NULL, TRUE),
+    (2, 'Incident', NULL, 3, NULL, FALSE);
+
+-- Submitted handovers replace the end-of-shift email for their shift.
+UPDATE shifts SET handover_sent_at = '2026-10-20 14:05+03' WHERE shift_id = 1;

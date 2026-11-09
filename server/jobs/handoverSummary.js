@@ -43,10 +43,10 @@ async function run() {
         [shift.shift_id]
       ),
       pool.query(
-        `SELECT i.incident_id, i.incident_type, i.occurred_at, p.risk_level
+        `SELECT i.incident_id, i.incident_type, i.occurred_at, p.risk_level, p.final_risk_level
            FROM incidents i
            LEFT JOIN LATERAL (
-             SELECT risk_level FROM incident_predictions
+             SELECT risk_level, final_risk_level FROM incident_predictions
               WHERE incident_id = i.incident_id
               ORDER BY created_at DESC, prediction_id DESC LIMIT 1
            ) p ON TRUE

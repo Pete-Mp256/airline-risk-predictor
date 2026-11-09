@@ -7,12 +7,18 @@ jest.mock('../services/mlClient', () => {
   const actual = jest.requireActual('../services/mlClient');
   return { ...actual, predict: jest.fn() };
 });
+// The rule queries are covered in handoverRules.test.js; here the rules give OK by default.
+jest.mock('../services/handoverRules', () => {
+  const actual = jest.requireActual('../services/handoverRules');
+  return { ...actual, checkHandover: jest.fn() };
+});
 
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const mlClient = require('../services/mlClient');
 const { sendMail } = require('../services/mailer');
+const handoverRules = require('../services/handoverRules');
 const app = require('../app');
 
 // Lets the un-awaited High risk email finish before asserting on it.
@@ -62,13 +68,21 @@ beforeEach(() => {
   pool.query.mockReset();
   mlClient.predict.mockReset();
   sendMail.mockReset().mockResolvedValue();
+  handoverRules.checkHandover.mockReset().mockImplementation(async (_incident, level) => (
+    { handover_flags: [], handover_level: 'OK', final_risk_level: level }
+  ));
 });
+
+const weakFlags = [
+  { code: 'weak_summary', label: 'Previous handover summary missing or under 20 characters' },
+  { code: 'edge_of_shift', label: 'Incident within 60 min of shift start or end' },
+];
 
 describe('POST /api/incidents', () => {
   test('saves the incident and a Low prediction without notifying', async () => {
     mockCreateQueries();
     mlClient.predict.mockResolvedValueOnce(mlResult('Low'));
-    pool.query.mockResolvedValueOnce({ rows: [{ prediction_id: 4, risk_level: 'Low' }] });
+    pool.query.mockResolvedValueOnce({ rows: [{ prediction_id: 4, risk_level: 'Low', final_risk_level: 'Low' }] });
 
     const res = await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
 
@@ -87,6 +101,7 @@ describe('POST /api/incidents', () => {
     const predictionParams = pool.query.mock.calls[3][1];
     expect(predictionParams[5]).toBe(0.425); // high_threshold
     expect(predictionParams[7]).toBe(80); // response_ms
+    expect(predictionParams.slice(8)).toEqual(['[]', 'OK', 'Low']); // handover_flags, handover_level, final_risk_level
     expect(pool.query).toHaveBeenCalledTimes(4);
   });
 
@@ -94,7 +109,7 @@ describe('POST /api/incidents', () => {
     mockCreateQueries();
     mlClient.predict.mockResolvedValueOnce(mlResult('High'));
     pool.query
-      .mockResolvedValueOnce({ rows: [{ prediction_id: 5, risk_level: 'High' }] })
+      .mockResolvedValueOnce({ rows: [{ prediction_id: 5, risk_level: 'High', final_risk_level: 'High' }] })
       .mockResolvedValueOnce({ rows: [] });
 
     const res = await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
@@ -110,7 +125,7 @@ describe('POST /api/incidents', () => {
   test('emails each notified manager the rating, reasons and a link on a High prediction', async () => {
     mockCreateQueries();
     mlClient.predict.mockResolvedValueOnce(mlResult('High'));
-    const prediction = { prediction_id: 5, risk_level: 'High', confidence: 0.92, top_factors: mlResult('High').result.top_factors };
+    const prediction = { prediction_id: 5, risk_level: 'High', final_risk_level: 'High', confidence: 0.92, top_factors: mlResult('High').result.top_factors };
     pool.query
       .mockResolvedValueOnce({ rows: [prediction] })
       .mockResolvedValueOnce({ rows: [
@@ -135,7 +150,7 @@ describe('POST /api/incidents', () => {
     mockCreateQueries();
     mlClient.predict.mockResolvedValueOnce(mlResult('High'));
     pool.query
-      .mockResolvedValueOnce({ rows: [{ prediction_id: 5, risk_level: 'High', confidence: 0.92, top_factors: [] }] })
+      .mockResolvedValueOnce({ rows: [{ prediction_id: 5, risk_level: 'High', final_risk_level: 'High', confidence: 0.92, top_factors: [] }] })
       .mockResolvedValueOnce({ rows: [{ email: 'amina@example.com', first_name: 'Amina' }] });
     sendMail.mockRejectedValueOnce(new Error('SMTP down'));
     const log = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -152,13 +167,82 @@ describe('POST /api/incidents', () => {
   test('does not email on a Low prediction', async () => {
     mockCreateQueries();
     mlClient.predict.mockResolvedValueOnce(mlResult('Low'));
-    pool.query.mockResolvedValueOnce({ rows: [{ prediction_id: 6, risk_level: 'Low' }] });
+    pool.query.mockResolvedValueOnce({ rows: [{ prediction_id: 6, risk_level: 'Low', final_risk_level: 'Low' }] });
 
     const res = await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
     await flush();
 
     expect(res.status).toBe(201);
     expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  test('a Weak handover raises Medium to High, stores both ratings and alerts with the flags', async () => {
+    mockCreateQueries();
+    mlClient.predict.mockResolvedValueOnce(mlResult('Medium'));
+    handoverRules.checkHandover.mockResolvedValueOnce(
+      { handover_flags: weakFlags, handover_level: 'Weak', final_risk_level: 'High' }
+    );
+    const prediction = {
+      prediction_id: 7, risk_level: 'Medium', final_risk_level: 'High', handover_level: 'Weak',
+      handover_flags: weakFlags, confidence: 0.6, top_factors: [],
+    };
+    pool.query
+      .mockResolvedValueOnce({ rows: [prediction] })
+      .mockResolvedValueOnce({ rows: [{ email: 'amina@example.com', first_name: 'Amina' }] });
+
+    const res = await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
+    await flush();
+
+    expect(res.status).toBe(201);
+    expect(handoverRules.checkHandover).toHaveBeenCalledWith(incidentRow, 'Medium');
+    const params = pool.query.mock.calls[3][1];
+    expect(params[1]).toBe('Medium'); // model rating kept
+    expect(params.slice(8)).toEqual([JSON.stringify(weakFlags), 'Weak', 'High']);
+    expect(pool.query.mock.calls[4][1][1]).toMatch(/Raised from Medium by the handover checks/);
+    const mail = sendMail.mock.calls[0][0];
+    expect(mail.text).toMatch(/The model rated it Medium; the handover checks raised it to High/);
+    expect(mail.text).toMatch(/Handover checks:\n- Previous handover summary missing/);
+  });
+
+  test('does not alert when a Weak handover leaves a Low rating unchanged', async () => {
+    mockCreateQueries();
+    mlClient.predict.mockResolvedValueOnce(mlResult('Low'));
+    handoverRules.checkHandover.mockResolvedValueOnce(
+      { handover_flags: weakFlags, handover_level: 'Weak', final_risk_level: 'Low' }
+    );
+    pool.query.mockResolvedValueOnce({ rows: [{ prediction_id: 8, risk_level: 'Low', final_risk_level: 'Low' }] });
+
+    const res = await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
+    await flush();
+
+    expect(res.status).toBe(201);
+    expect(pool.query).toHaveBeenCalledTimes(4);
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  test('adds the incident to the shift handover while it is a Draft', async () => {
+    mockCreateQueries();
+    mlClient.predict.mockResolvedValueOnce(mlResult('Low'));
+    pool.query.mockResolvedValueOnce({ rows: [{ prediction_id: 4, risk_level: 'Low', final_risk_level: 'Low' }] });
+
+    await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
+
+    const sql = pool.query.mock.calls[2][0];
+    expect(sql).toMatch(/INSERT INTO incidents/);
+    expect(sql).toMatch(/INSERT INTO handover_items[\s\S]*h\.status = 'Draft'/);
+  });
+
+  test('accepts a task carried over to the shift by the previous handover', async () => {
+    mockCreateQueries();
+    mlClient.predict.mockResolvedValueOnce(mlResult('Low'));
+    pool.query.mockResolvedValueOnce({ rows: [{ prediction_id: 4, risk_level: 'Low', final_risk_level: 'Low' }] });
+
+    await request(app).post('/api/incidents').set('Authorization', `Bearer ${owner}`).send(body);
+
+    const [sql, params] = pool.query.mock.calls[1];
+    expect(sql).toMatch(/shift_id = \$1 OR task_id IN/);
+    expect(sql).toMatch(/hi\.carried_over/);
+    expect(params).toEqual([2, 3]);
   });
 
   test('keeps the incident when the model service is down', async () => {
@@ -222,7 +306,7 @@ describe('POST /api/incidents/:id/predict', () => {
   test('stores a new prediction on retry', async () => {
     pool.query
       .mockResolvedValueOnce({ rows: [{ ...incidentRow, ...shift, severity_score: '0.9500' }] })
-      .mockResolvedValueOnce({ rows: [{ prediction_id: 6, risk_level: 'Medium' }] });
+      .mockResolvedValueOnce({ rows: [{ prediction_id: 6, risk_level: 'Medium', final_risk_level: 'Medium' }] });
     mlClient.predict.mockResolvedValueOnce(mlResult('Medium'));
 
     const res = await request(app).post('/api/incidents/10/predict').set('Authorization', `Bearer ${owner}`);

@@ -7,7 +7,7 @@ const RISK_ORDER = { High: 0, Medium: 1, Low: 2 };
 // Incidents on a shift, highest predicted risk first.
 export default function IncidentList({ incidents, action, children }) {
   const sorted = [...incidents].sort(
-    (a, b) => (RISK_ORDER[a.risk_level] ?? 3) - (RISK_ORDER[b.risk_level] ?? 3)
+    (a, b) => (RISK_ORDER[a.final_risk_level] ?? 3) - (RISK_ORDER[b.final_risk_level] ?? 3)
   );
 
   return (
@@ -34,7 +34,7 @@ export default function IncidentList({ incidents, action, children }) {
                     {formatDateTime(i.occurred_at)} · task {i.task_status.toLowerCase()}
                   </p>
                 </div>
-                <RiskBadge level={i.risk_level} confidence={i.confidence} />
+                <RiskBadge level={i.final_risk_level} confidence={i.confidence} />
               </Link>
             </li>
           ))}

@@ -5,7 +5,7 @@ const { parseId } = require('../utils/request');
 async function listNotifications(req, res, next) {
   try {
     const { rows } = await pool.query(
-      `SELECT n.*, p.incident_id, p.risk_level
+      `SELECT n.*, p.incident_id, p.risk_level, p.final_risk_level
          FROM notifications n
          LEFT JOIN incident_predictions p ON p.prediction_id = n.prediction_id
         WHERE n.manager_id = $1

@@ -69,12 +69,14 @@ describe('shifts', () => {
     pool.query
       .mockResolvedValueOnce({ rows: [{ shift_id: 2, manager_name: 'Amina Odhiambo' }] })
       .mockResolvedValueOnce({ rows: [{ task_id: 3, status: 'Pending' }] })
-      .mockResolvedValueOnce({ rows: [{ incident_id: 3, risk_level: 'High' }] });
+      .mockResolvedValueOnce({ rows: [{ incident_id: 3, risk_level: 'High' }] })
+      .mockResolvedValueOnce({ rows: [{ task_id: 1, status: 'In Progress' }] });
 
     const res = await request(app).get('/api/shifts/2').set('Authorization', `Bearer ${other}`);
 
     expect(res.status).toBe(200);
     expect(res.body.tasks).toHaveLength(1);
+    expect(res.body.carried_tasks[0].task_id).toBe(1);
     expect(res.body.incidents[0].risk_level).toBe('High');
   });
 

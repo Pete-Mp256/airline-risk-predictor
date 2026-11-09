@@ -10,18 +10,43 @@ const SUMMARY = {
   Low: 'Routine: record and continue.',
 };
 
-// Risk badge, class probabilities and the top SHAP reasons in plain words.
+// Final risk badge, the handover checks, class probabilities and the top SHAP reasons in plain words.
+// risk_level is the model rating; final_risk_level is after the handover checks (Module 2).
 export default function PredictionResult({ prediction }) {
   const probabilities = prediction.probabilities || {};
   const factors = (prediction.top_factors || []).slice(0, 3);
   const threshold = prediction.high_threshold;
+  const finalLevel = prediction.final_risk_level || prediction.risk_level;
+  const raised = finalLevel !== prediction.risk_level;
+  const flags = prediction.handover_flags || [];
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <RiskBadge level={prediction.risk_level} confidence={prediction.confidence} size="lg" />
-        <p className="text-sm text-slate-600">{SUMMARY[prediction.risk_level]}</p>
+        <RiskBadge level={finalLevel} confidence={prediction.confidence} size="lg" />
+        <p className="text-sm text-slate-600">{SUMMARY[finalLevel]}</p>
       </div>
+      {raised && (
+        <p className="text-sm text-slate-600">
+          Model rating: <span className="font-medium">{prediction.risk_level}</span> · Raised to{' '}
+          <span className="font-medium">{finalLevel}</span> by handover checks.
+        </p>
+      )}
+
+      {prediction.handover_level && (
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">
+            Handover checks: {prediction.handover_level === 'Weak' ? 'Weak handover' : 'OK'}
+          </h3>
+          {flags.length === 0 ? (
+            <p className="mt-1 text-sm text-slate-500">No handover checks fired.</p>
+          ) : (
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+              {flags.map((f) => <li key={f.code}>{f.label}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div>
         <h3 className="text-sm font-semibold text-slate-700">Why the model said this</h3>

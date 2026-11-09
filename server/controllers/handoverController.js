@@ -22,12 +22,12 @@ const HANDOVER_SELECT = `
 async function fetchItems(handoverId) {
   const { rows } = await pool.query(
     `SELECT hi.*, t.title AS task_title, t.aircraft_reg, t.status AS task_status,
-            i.incident_type, i.occurred_at, p.risk_level
+            i.incident_type, i.occurred_at, p.risk_level, p.final_risk_level
        FROM handover_items hi
        LEFT JOIN tasks t ON t.task_id = hi.task_id
        LEFT JOIN incidents i ON i.incident_id = hi.incident_id
        LEFT JOIN LATERAL (
-         SELECT risk_level FROM incident_predictions
+         SELECT risk_level, final_risk_level FROM incident_predictions
           WHERE incident_id = hi.incident_id
           ORDER BY created_at DESC, prediction_id DESC LIMIT 1
        ) p ON TRUE

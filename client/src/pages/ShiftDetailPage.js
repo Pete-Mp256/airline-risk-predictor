@@ -20,9 +20,9 @@ function handoverTimeline(shift, tasks, incidents) {
       id: `incident-${i.incident_id}`,
       when: formatTime(i.occurred_at),
       title: i.incident_type,
-      detail: i.risk_level ? `${i.risk_level} risk · task ${i.task_status.toLowerCase()}` : 'Not predicted yet',
-      tone: i.risk_level || 'muted',
-      alert: i.risk_level === 'High',
+      detail: i.final_risk_level ? `${i.final_risk_level} risk · task ${i.task_status.toLowerCase()}` : 'Not predicted yet',
+      tone: i.final_risk_level || 'muted',
+      alert: i.final_risk_level === 'High',
       to: `/incidents/${i.incident_id}`,
     }));
   return [
@@ -76,7 +76,7 @@ export default function ShiftDetailPage() {
   }
   if (!data) return <p className="text-sm text-slate-500">Loading shift…</p>;
 
-  const { shift, tasks, incidents } = data;
+  const { shift, tasks, incidents, carried_tasks: carriedTasks = [] } = data;
   const isOwner = shift.manager_id === manager.manager_id;
 
   return (
@@ -110,7 +110,7 @@ export default function ShiftDetailPage() {
             )}
           >
             {logging && (
-              <IncidentForm shift={shift} tasks={tasks} onLogged={load} onClose={() => setLogging(false)} />
+              <IncidentForm shift={shift} tasks={tasks} carriedTasks={carriedTasks} onLogged={load} onClose={() => setLogging(false)} />
             )}
           </IncidentList>
           <TaskList

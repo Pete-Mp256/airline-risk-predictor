@@ -33,7 +33,7 @@ function emptyCounts() {
   return { Low: 0, Medium: 0, High: 0, not_predicted: 0, total: 0 };
 }
 
-// Adds a grouped row ({ risk_level, count }) to the counts kept under `key`.
+// Adds a grouped row ({ risk_level, count }; risk_level is the final rating) to the counts kept under `key`.
 function addTo(map, key, row, extra = {}) {
   if (!map.has(key)) map.set(key, { ...extra, ...emptyCounts() });
   const counts = map.get(key);
@@ -60,7 +60,7 @@ async function getSummary(req, res, next) {
     const [grouped, recentHigh, extra] = await Promise.all([
       pool.query(
         `SELECT i.occurred_at::date AS day, d.department_id, d.name AS department_name, s.shift_type,
-                p.risk_level, COUNT(*)::int AS count
+                p.final_risk_level AS risk_level, COUNT(*)::int AS count
            ${INCIDENT_JOINS}
           WHERE ${IN_WINDOW}
           GROUP BY 1, 2, 3, 4, 5`,
@@ -70,7 +70,7 @@ async function getSummary(req, res, next) {
         `SELECT i.incident_id, i.incident_type, i.occurred_at, s.shift_id, s.shift_type,
                 d.name AS department_name, p.confidence
            ${INCIDENT_JOINS}
-          WHERE ${IN_WINDOW} AND p.risk_level = 'High'
+          WHERE ${IN_WINDOW} AND p.final_risk_level = 'High'
           ORDER BY i.occurred_at DESC
           LIMIT 5`,
         [days]
@@ -127,7 +127,7 @@ async function getSummary(req, res, next) {
 }
 
 // The incidents behind a dashboard count, in the same window as the summary.
-// risk_level=none lists incidents without a prediction.
+// risk_level filters on the final rating; risk_level=none lists incidents without a prediction.
 async function listIncidents(req, res, next) {
   const days = readDays(req.query.days);
   const { risk_level, shift_type, department_id, day } = req.query;
@@ -149,10 +149,10 @@ async function listIncidents(req, res, next) {
   try {
     const { rows } = await pool.query(
       `SELECT i.incident_id, i.incident_type, i.occurred_at, i.task_status, s.shift_id, s.shift_type,
-              s.shift_date, d.name AS department_name, p.risk_level, p.confidence
+              s.shift_date, d.name AS department_name, p.risk_level, p.final_risk_level, p.confidence
          ${INCIDENT_JOINS}
         WHERE ${IN_WINDOW}
-          AND ($2::text IS NULL OR ($2::text = 'none' AND p.risk_level IS NULL) OR p.risk_level::text = $2::text)
+          AND ($2::text IS NULL OR ($2::text = 'none' AND p.final_risk_level IS NULL) OR p.final_risk_level::text = $2::text)
           AND ($3::shift_type IS NULL OR s.shift_type = $3::shift_type)
           AND ($4::int IS NULL OR s.department_id = $4::int)
           AND ($5::date IS NULL OR i.occurred_at::date = $5::date)

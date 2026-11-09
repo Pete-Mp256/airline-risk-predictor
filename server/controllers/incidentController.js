@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const mlClient = require('../services/mlClient');
 const { emailHighRisk } = require('../services/alerts');
+const handoverRules = require('../services/handoverRules');
 const { TASK_STATUSES, toTaskStatus } = require('../utils/labels');
 const { parseId, isBlank, isTimestamp, invalid } = require('../utils/request');
 
@@ -18,7 +19,8 @@ const NUMERIC_FEATURES = [
 
 const LATEST_PREDICTION = `
   LEFT JOIN LATERAL (
-    SELECT prediction_id, risk_level, confidence, probabilities, top_factors
+    SELECT prediction_id, risk_level, final_risk_level, handover_level, handover_flags,
+           confidence, probabilities, top_factors
       FROM incident_predictions
      WHERE incident_id = i.incident_id
      ORDER BY created_at DESC, prediction_id DESC
@@ -69,7 +71,8 @@ function modelFeatures(incident, shiftType) {
   return features;
 }
 
-// Calls Flask, stores the prediction and notifies on High risk (in-app and by email).
+// Calls Flask, runs the handover rules (which can raise Medium to High), stores both ratings
+// and notifies on a final High rating (in-app and by email).
 // Returns { prediction } or { prediction: null, error } when the ML service fails.
 async function runPrediction(incident, shift) {
   let response;
@@ -81,10 +84,12 @@ async function runPrediction(incident, shift) {
   }
 
   const { result, responseMs } = response;
+  const rules = await handoverRules.checkHandover(incident, result.risk_level);
   const { rows } = await pool.query(
     `INSERT INTO incident_predictions
-       (incident_id, risk_level, confidence, probabilities, top_factors, high_threshold, model_version, response_ms)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (incident_id, risk_level, confidence, probabilities, top_factors, high_threshold, model_version,
+        response_ms, handover_flags, handover_level, final_risk_level)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
     [
       incident.incident_id,
@@ -95,11 +100,15 @@ async function runPrediction(incident, shift) {
       result.high_threshold ?? null,
       process.env.ML_MODEL_VERSION || null,
       responseMs,
+      JSON.stringify(rules.handover_flags),
+      rules.handover_level,
+      rules.final_risk_level,
     ]
   );
   const prediction = rows[0];
 
-  if (prediction.risk_level === 'High') {
+  if (prediction.final_risk_level === 'High') {
+    const raised = prediction.risk_level !== 'High' ? ' Raised from Medium by the handover checks.' : '';
     const reason = result.top_factors && result.top_factors[0]
       ? ` Top factor: ${result.top_factors[0].feature}.`
       : '';
@@ -114,7 +123,7 @@ async function runPrediction(incident, shift) {
        SELECT m.email, m.first_name FROM n JOIN shift_managers m USING (manager_id)`,
       [
         prediction.prediction_id,
-        `High risk incident #${incident.incident_id} (${incident.incident_type}) on the ${shift.shift_type} shift.${reason}`,
+        `High risk incident #${incident.incident_id} (${incident.incident_type}) on the ${shift.shift_type} shift.${raised}${reason}`,
         shift.department_id,
         shift.manager_id,
       ]
@@ -144,11 +153,15 @@ async function createIncident(req, res, next) {
     }
 
     if (fields.task_id) {
+      // A task on this shift, or one the previous handover carried over to it.
       const taskResult = await pool.query(
-        'SELECT status FROM tasks WHERE task_id = $1 AND shift_id = $2',
-        [fields.task_id, shiftId]
+        `SELECT status FROM tasks
+          WHERE task_id = $2 AND (shift_id = $1 OR task_id IN (${handoverRules.CARRIED_TASK_IDS}))`,
+        [shiftId, fields.task_id]
       );
-      if (!taskResult.rows[0]) return invalid(res, { task_id: 'Task not found on this shift' });
+      if (!taskResult.rows[0]) {
+        return invalid(res, { task_id: 'Task not found on this shift or carried over to it' });
+      }
       fields.task_status = fields.task_status || taskResult.rows[0].status;
     }
     if (!fields.task_status) {
@@ -158,8 +171,16 @@ async function createIncident(req, res, next) {
     const columns = ['shift_id', 'reported_by', ...Object.keys(fields)];
     const values = [shiftId, req.user.manager_id, ...Object.values(fields)];
     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+    // Also adds the incident to the shift's handover while it is still a Draft.
     const { rows } = await pool.query(
-      `INSERT INTO incidents (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+      `WITH i AS (
+         INSERT INTO incidents (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *
+       ), draft AS (
+         INSERT INTO handover_items (handover_id, item_type, incident_id)
+         SELECT h.handover_id, 'Incident', i.incident_id
+           FROM i JOIN handovers h ON h.shift_id = i.shift_id AND h.status = 'Draft'
+       )
+       SELECT * FROM i`,
       values
     );
     const incident = rows[0];
@@ -214,13 +235,14 @@ async function listIncidents(req, res, next) {
   try {
     const { rows } = await pool.query(
       `SELECT i.*, s.shift_type, s.shift_date, d.name AS department_name,
-              p.prediction_id, p.risk_level, p.confidence, p.top_factors
+              p.prediction_id, p.risk_level, p.final_risk_level, p.handover_level, p.handover_flags,
+              p.confidence, p.top_factors
          FROM incidents i
          JOIN shifts s ON s.shift_id = i.shift_id
          JOIN departments d ON d.department_id = s.department_id
          ${LATEST_PREDICTION}
         WHERE ($1::int IS NULL OR i.shift_id = $1::int)
-          AND ($2::risk_level IS NULL OR p.risk_level = $2::risk_level)
+          AND ($2::risk_level IS NULL OR p.final_risk_level = $2::risk_level)
           AND ($3::timestamptz IS NULL OR i.occurred_at >= $3::timestamptz)
           AND ($4::timestamptz IS NULL OR i.occurred_at <= $4::timestamptz)
         ORDER BY i.occurred_at DESC

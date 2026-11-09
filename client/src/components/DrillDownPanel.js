@@ -17,7 +17,7 @@ function IncidentRow({ incident: i }) {
             {formatDateTime(i.occurred_at)} · {i.shift_type} shift · {i.department_name}
           </p>
         </div>
-        <RiskBadge level={i.risk_level} confidence={i.confidence} />
+        <RiskBadge level={i.final_risk_level} confidence={i.confidence} />
       </Link>
     </li>
   );

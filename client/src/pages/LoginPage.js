@@ -116,7 +116,7 @@ export default function LoginPage() {
   return (
     <AuthCard
       title="Log in"
-      subtitle="Shift managers sign in to log incidents and review handovers."
+      subtitle="Staff sign in to log incidents and review handovers."
       footer={<>No account yet? <Link to="/register" className="font-medium text-accent-700 hover:underline">Register</Link></>}
     >
       <GoogleSignIn onSignedIn={() => navigate(from, { replace: true })} />

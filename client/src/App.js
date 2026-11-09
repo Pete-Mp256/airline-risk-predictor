@@ -4,6 +4,8 @@ import { GoogleProvider } from './components/GoogleSignIn';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
+import HandoverDetailPage from './pages/HandoverDetailPage';
+import HandoversPage from './pages/HandoversPage';
 import IncidentDetailPage from './pages/IncidentDetailPage';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -43,6 +45,8 @@ export default function App() {
                 <Route path="/shifts" element={<ShiftsPage />} />
                 <Route path="/shifts/:id" element={<ShiftDetailPage />} />
                 <Route path="/incidents/:id" element={<IncidentDetailPage />} />
+                <Route path="/handovers" element={<HandoversPage />} />
+                <Route path="/handovers/:id" element={<HandoverDetailPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>

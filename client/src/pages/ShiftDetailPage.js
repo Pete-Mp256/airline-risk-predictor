@@ -4,6 +4,7 @@ import api, { apiError } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import IncidentForm from '../components/IncidentForm';
 import IncidentList from '../components/IncidentList';
+import HandoverPanel from '../components/HandoverPanel';
 import PageHeader from '../components/PageHeader';
 import ShiftNotes from '../components/ShiftNotes';
 import TaskList from '../components/TaskList';
@@ -37,16 +38,17 @@ function handoverTimeline(shift, tasks, incidents) {
       id: 'handover',
       when: formatTime(shift.end_time),
       title: 'Handover',
-      detail: openTasks
-        ? `${openTasks} open task${openTasks === 1 ? '' : 's'} to carry over`
-        : 'All tasks complete',
+      detail: [
+        shift.handover_status && `Handover ${shift.handover_status.toLowerCase()}`,
+        openTasks ? `${openTasks} open task${openTasks === 1 ? '' : 's'} to carry over` : 'All tasks complete',
+      ].filter(Boolean).join(' · '),
       tone: openTasks ? 'muted' : 'accent',
       alert: openTasks > 0,
     },
   ];
 }
 
-// Handover view: everything the incoming manager needs about one shift.
+// One shift: incidents, tasks and the handover to the next person on duty.
 export default function ShiftDetailPage() {
   const { id } = useParams();
   const { manager } = useAuth();
@@ -124,6 +126,11 @@ export default function ShiftDetailPage() {
             <h2 className="section-title mb-4">Handover timeline</h2>
             <Timeline items={handoverTimeline(shift, tasks, incidents)} />
           </section>
+          <HandoverPanel
+            shift={shift}
+            isOwner={isOwner}
+            onChanged={(updated) => setData((d) => ({ ...d, shift: { ...d.shift, ...updated } }))}
+          />
           <ShiftNotes
             shift={shift}
             canEdit={isOwner}

@@ -10,9 +10,11 @@ const NAV = [
 
 export function Logo() {
   return (
-    <span className="flex items-center gap-2 text-slate-900">
-      <PlaneIcon className="h-6 w-6" />
-      <span className="text-lg font-medium uppercase tracking-[0.08em]">Incident Risk</span>
+    <span className="flex items-center gap-2 text-ink">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-600 text-white">
+        <PlaneIcon className="h-4 w-4" />
+      </span>
+      <span className="text-lg font-semibold tracking-tight" style={{ fontStretch: '85%' }}>Incident Risk</span>
     </span>
   );
 }
@@ -21,6 +23,7 @@ export default function Layout() {
   return (
     <div className="px-3 py-4 sm:px-6 sm:py-8">
       <div className="shell">
+        <div className="livery" aria-hidden="true" />
         <header className="flex flex-wrap items-center gap-3 px-5 pt-5 sm:px-8 sm:pt-7">
           <Link to="/shifts" aria-label="Incident Risk home"><Logo /></Link>
           <nav className="order-last flex w-full justify-center sm:order-none sm:ml-auto sm:w-auto" aria-label="Main">

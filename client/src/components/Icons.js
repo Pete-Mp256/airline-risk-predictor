@@ -112,14 +112,14 @@ export function PlaneIllustration({ className = '' }) {
         </linearGradient>
       </defs>
       {/* far wing */}
-      <path d="M150 50 L112 26 L128 26 L192 50 Z" fill="#c8d9ec" />
+      <path d="M150 50 L112 26 L128 26 L192 50 Z" fill="#e2e8f0" />
       {/* tail fin and stabiliser */}
-      <path d="M46 49 L26 10 L46 10 L84 49 Z" fill="#6f9bc8" />
-      <path d="M42 64 L16 76 L32 78 L70 66 Z" fill="#a3c0df" />
+      <path d="M46 49 L26 10 L46 10 L84 49 Z" fill="#c8102e" />
+      <path d="M42 64 L16 76 L32 78 L70 66 Z" fill="#cbd5e1" />
       {/* fuselage */}
       <path d="M30 60 C30 53 37 48 46 48 L262 48 C281 48 297 56 302 61 C297 66 283 73 264 73 L46 73 C37 73 30 67 30 60 Z"
         fill="url(#fuselage)" stroke="#cbd5e1" strokeWidth="1" />
-      <rect x="46" y="64" width="222" height="3" rx="1.5" fill="#6f9bc8" />
+      <rect x="46" y="64" width="222" height="3" rx="1.5" fill="#c8102e" />
       {windows.map((x) => <circle key={x} cx={x} cy="56" r="1.7" fill="#475569" />)}
       <path d="M273 53 L289 57 L286 60 L271 58.5 Z" fill="#334155" />
       {/* near wing and engine */}

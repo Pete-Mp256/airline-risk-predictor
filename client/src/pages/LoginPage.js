@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { apiError } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import AuthCard from '../components/AuthCard';
+import GoogleSignIn from '../components/GoogleSignIn';
 
 const RESEND_COOLDOWN = 60; // seconds; matches the server
 
@@ -118,7 +119,8 @@ export default function LoginPage() {
       subtitle="Shift managers sign in to log incidents and review handovers."
       footer={<>No account yet? <Link to="/register" className="font-medium text-accent-700 hover:underline">Register</Link></>}
     >
-      <form onSubmit={handleLogin} className="space-y-4" noValidate>
+      <GoogleSignIn onSignedIn={() => navigate(from, { replace: true })} />
+      <form onSubmit={handleLogin} className="mt-4 space-y-4" noValidate>
         {error && <p className="alert-error" role="alert">{error}</p>}
         <div>
           <label htmlFor="email" className="label">Email</label>

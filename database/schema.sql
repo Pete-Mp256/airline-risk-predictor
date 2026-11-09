@@ -33,7 +33,8 @@ CREATE TABLE shift_managers (
     first_name      VARCHAR(50) NOT NULL,
     last_name       VARCHAR(50) NOT NULL,
     email           VARCHAR(255) NOT NULL UNIQUE,
-    password_hash   VARCHAR(255) NOT NULL,
+    password_hash   VARCHAR(255),           -- NULL for accounts that only sign in with Google
+    google_id       VARCHAR(255) UNIQUE,    -- Google account "sub", set on first Google sign-in
     phone           VARCHAR(20),
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -61,6 +62,7 @@ CREATE TABLE shifts (
     end_time        TIMESTAMPTZ NOT NULL,
     staff_count     INTEGER NOT NULL DEFAULT 0 CHECK (staff_count >= 0),
     notes           TEXT,
+    handover_sent_at TIMESTAMPTZ,           -- set when the end-of-shift summary email goes out
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_shift_times CHECK (end_time > start_time)
 );
@@ -80,6 +82,7 @@ CREATE TABLE tasks (
     complexity          SMALLINT CHECK (complexity BETWEEN 1 AND 5),
     estimated_hours     NUMERIC(5,2) CHECK (estimated_hours >= 0),
     status              task_status NOT NULL DEFAULT 'Pending',
+    reminder_sent_at    TIMESTAMPTZ,        -- set when the before-shift-end reminder goes out
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -133,8 +136,10 @@ CREATE TABLE notifications (
     notification_id SERIAL PRIMARY KEY,
     manager_id      INTEGER NOT NULL REFERENCES shift_managers(manager_id) ON DELETE CASCADE,
     prediction_id   INTEGER REFERENCES incident_predictions(prediction_id) ON DELETE CASCADE,
+    shift_id        INTEGER REFERENCES shifts(shift_id) ON DELETE CASCADE,  -- task reminders
     message         TEXT NOT NULL,
     is_read         BOOLEAN NOT NULL DEFAULT FALSE,
+    escalated_at    TIMESTAMPTZ,            -- set when an unread High risk alert is sent to a supervisor
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

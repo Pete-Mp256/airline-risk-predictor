@@ -1,8 +1,14 @@
 // Auth route tests. The database is mocked, so these run without PostgreSQL.
 process.env.JWT_SECRET = 'test-secret';
+process.env.GOOGLE_CLIENT_ID = 'test-client-id.apps.googleusercontent.com';
 
 jest.mock('../config/db', () => ({ query: jest.fn() }));
 jest.mock('../services/mailer', () => ({ sendMail: jest.fn().mockResolvedValue() }));
+// One shared verifyIdToken mock for the OAuth2Client the controller creates.
+jest.mock('google-auth-library', () => {
+  const verifyIdToken = jest.fn();
+  return { OAuth2Client: jest.fn(() => ({ verifyIdToken })), verifyIdToken };
+});
 
 const request = require('supertest');
 const bcrypt = require('bcryptjs');
@@ -10,6 +16,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../config/db');
 const { sendMail } = require('../services/mailer');
+const { verifyIdToken } = require('google-auth-library');
 const app = require('../app');
 
 const manager = {
@@ -33,6 +40,7 @@ const pendingToken = jwt.sign({ manager_id: 1, purpose: '2fa' }, 'test-secret', 
 beforeEach(() => {
   pool.query.mockReset();
   sendMail.mockReset().mockResolvedValue();
+  verifyIdToken.mockReset();
 });
 
 describe('POST /api/auth/register', () => {
@@ -138,6 +146,17 @@ describe('POST /api/auth/login', () => {
     expect(wrongPassword.body).toEqual(unknownEmail.body);
   });
 
+  test('returns 401 for a Google-only account that has no password', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [{ ...manager, password_hash: null }] });
+
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: manager.email, password: 'Password123!' });
+
+    expect(res.status).toBe(401);
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
   test('returns 403 for a deactivated account', async () => {
     pool.query.mockResolvedValueOnce({
       rows: [{ ...manager, is_active: false, password_hash: passwordHash }],
@@ -148,6 +167,96 @@ describe('POST /api/auth/login', () => {
       .send({ email: manager.email, password: 'Password123!' });
 
     expect(res.status).toBe(403);
+  });
+});
+
+describe('POST /api/auth/google', () => {
+  const googleProfile = {
+    sub: 'google-123',
+    email: 'Amina.Odhiambo@example.com',
+    email_verified: true,
+    given_name: 'Amina',
+    family_name: 'Odhiambo',
+  };
+  const verifiedAs = (profile) => verifyIdToken.mockResolvedValueOnce({ getPayload: () => profile });
+
+  test('signs in an account already linked to the Google ID, without a 2FA code', async () => {
+    verifiedAs(googleProfile);
+    pool.query.mockResolvedValueOnce({ rows: [manager] });
+
+    const res = await request(app).post('/api/auth/google').send({ credential: 'id-token' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.created).toBe(false);
+    expect(jwt.verify(res.body.token, 'test-secret').manager_id).toBe(1);
+    expect(verifyIdToken).toHaveBeenCalledWith({
+      idToken: 'id-token',
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    expect(pool.query).toHaveBeenCalledTimes(1);
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+
+  test('links an existing password account by its email on first Google sign-in', async () => {
+    verifiedAs(googleProfile);
+    pool.query
+      .mockResolvedValueOnce({ rows: [] }) // no account with this Google ID
+      .mockResolvedValueOnce({ rows: [manager] }); // linked by email
+
+    const res = await request(app).post('/api/auth/google').send({ credential: 'id-token' });
+
+    expect(res.status).toBe(200);
+    expect(pool.query.mock.calls[1][0]).toMatch(/UPDATE shift_managers SET google_id/);
+    expect(pool.query.mock.calls[1][1]).toEqual(['google-123', 'amina.odhiambo@example.com']);
+  });
+
+  test('creates a new account with no password when the email is new', async () => {
+    verifiedAs(googleProfile);
+    pool.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ ...manager, department_id: null }] });
+
+    const res = await request(app).post('/api/auth/google').send({ credential: 'id-token' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.created).toBe(true);
+    expect(pool.query.mock.calls[2][0]).toMatch(/INSERT INTO shift_managers/);
+    expect(pool.query.mock.calls[2][1]).toEqual(['Amina', 'Odhiambo', 'amina.odhiambo@example.com', 'google-123']);
+  });
+
+  test('returns 409 when the email is linked to a different Google account', async () => {
+    verifiedAs(googleProfile);
+    pool.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockRejectedValueOnce(Object.assign(new Error('duplicate'), { code: '23505' }));
+
+    const res = await request(app).post('/api/auth/google').send({ credential: 'id-token' });
+
+    expect(res.status).toBe(409);
+  });
+
+  test('rejects an invalid token and an unverified email', async () => {
+    verifyIdToken.mockRejectedValueOnce(new Error('Wrong recipient'));
+    const invalid = await request(app).post('/api/auth/google').send({ credential: 'forged' });
+
+    verifiedAs({ ...googleProfile, email_verified: false });
+    const unverified = await request(app).post('/api/auth/google').send({ credential: 'id-token' });
+
+    expect(invalid.status).toBe(401);
+    expect(unverified.status).toBe(401);
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  test('returns 403 for a deactivated account', async () => {
+    verifiedAs(googleProfile);
+    pool.query.mockResolvedValueOnce({ rows: [{ ...manager, is_active: false }] });
+
+    const res = await request(app).post('/api/auth/google').send({ credential: 'id-token' });
+
+    expect(res.status).toBe(403);
+    expect(res.body).not.toHaveProperty('token');
   });
 });
 

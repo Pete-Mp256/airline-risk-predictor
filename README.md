@@ -93,17 +93,21 @@ createdb incident_risk_predictor
 psql -d incident_risk_predictor -f database/schema.sql
 ```
 
-An existing database created before email 2FA needs the migration instead of a fresh schema:
+An existing database created before email 2FA and Google sign-in needs the migrations instead of a fresh schema:
 
 ```bash
 psql -d incident_risk_predictor -f database/migrations/001_login_codes.sql
+psql -d incident_risk_predictor -f database/migrations/002_google_signin.sql
+psql -d incident_risk_predictor -f database/migrations/003_handover_summary.sql
+psql -d incident_risk_predictor -f database/migrations/004_task_reminders.sql
+psql -d incident_risk_predictor -f database/migrations/005_alert_escalation.sql
 ```
 
 ### 2. API server
 
 ```bash
 cd server
-cp .env.example .env   # then set DB credentials, JWT_SECRET and the SMTP_* email settings
+cp .env.example .env   # then set DB credentials, JWT_SECRET, GOOGLE_CLIENT_ID and the SMTP_* email settings
 npm install
 npm run dev            # http://localhost:5000, health check at /api/health
 ```
@@ -122,6 +126,7 @@ python app.py                  # http://localhost:5001
 
 ```bash
 cd client
+cp .env.example .env           # optional: set REACT_APP_GOOGLE_CLIENT_ID to show Sign in with Google
 npm install
 npm start                      # http://localhost:3000, proxies API calls to :5000
 ```
@@ -134,6 +139,8 @@ npm start                      # http://localhost:3000, proxies API calls to :50
 | Flask | `POST` | `/predict` | Returns `{ "risk_level": ..., "confidence": ... }` for a shift or task feature payload |
 
 Logging in is two steps. `POST /api/auth/login` checks the password, emails a 6-digit code and returns a 10-minute `pending_token`. `POST /api/auth/verify-2fa` with that token and the code returns the session token. `POST /api/auth/resend-code` sends a new code, at most once a minute. A code expires after 10 minutes or 5 wrong attempts. If `SMTP_USER` is not set, the code is printed in the server console.
+
+`POST /api/auth/google` takes the Google ID token (`credential`) from the Sign in with Google button. It verifies the token against `GOOGLE_CLIENT_ID` and returns a session token directly, with no email code. On first use it links an existing account with the same verified email, or creates a new account with no password.
 
 Protected Express routes expect an `Authorization: Bearer <token>` header. The token is verified by [server/middleware/auth.js](server/middleware/auth.js).
 

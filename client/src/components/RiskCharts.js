@@ -4,7 +4,8 @@ import {
 } from 'recharts';
 
 // Same colours as the risk badges. The level is always written next to the colour too.
-export const RISK_COLORS = { Low: '#10b981', Medium: '#f59e0b', High: '#dc2626', not_predicted: '#94a3b8' };
+// Same values as the risk colours in tailwind.config.js.
+export const RISK_COLORS = { Low: '#2f9e77', Medium: '#e8a200', High: '#d9480f', not_predicted: '#94a3b8' };
 
 const SERIES = [
   { key: 'Low', label: 'Low' },

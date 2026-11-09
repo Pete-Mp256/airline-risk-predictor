@@ -1,7 +1,7 @@
 import { describeFeature } from '../utils/features';
 import { RiskBadge } from './Badges';
 
-const BAR_COLOURS = { Low: 'bg-emerald-500', Medium: 'bg-amber-500', High: 'bg-red-600' };
+const BAR_COLOURS = { Low: 'bg-risk-low', Medium: 'bg-risk-medium', High: 'bg-risk-high' };
 const LEVELS = ['Low', 'Medium', 'High'];
 
 const SUMMARY = {
@@ -38,7 +38,7 @@ export default function PredictionResult({ prediction }) {
                   </span>
                   <span>
                     <span className="font-medium">{describeFeature(f.feature, f.value)}</span>{' '}
-                    <span className={raises ? 'text-red-700' : 'text-emerald-700'}>
+                    <span className={raises ? 'text-risk-high-ink' : 'text-risk-low-ink'}>
                       {raises ? '↑ raised' : '↓ lowered'}
                     </span>{' '}
                     the {prediction.risk_level} risk score.

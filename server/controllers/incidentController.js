@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const mlClient = require('../services/mlClient');
+const { emailHighRisk } = require('../services/alerts');
 const { TASK_STATUSES, toTaskStatus } = require('../utils/labels');
 const { parseId, isBlank, isTimestamp, invalid } = require('../utils/request');
 
@@ -68,7 +69,7 @@ function modelFeatures(incident, shiftType) {
   return features;
 }
 
-// Calls Flask, stores the prediction and notifies on High risk.
+// Calls Flask, stores the prediction and notifies on High risk (in-app and by email).
 // Returns { prediction } or { prediction: null, error } when the ML service fails.
 async function runPrediction(incident, shift) {
   let response;
@@ -102,11 +103,15 @@ async function runPrediction(incident, shift) {
     const reason = result.top_factors && result.top_factors[0]
       ? ` Top factor: ${result.top_factors[0].feature}.`
       : '';
-    await pool.query(
-      `INSERT INTO notifications (manager_id, prediction_id, message)
-       SELECT manager_id, $1, $2
-         FROM shift_managers
-        WHERE is_active AND (department_id = $3 OR manager_id = $4)`,
+    const notified = await pool.query(
+      `WITH n AS (
+         INSERT INTO notifications (manager_id, prediction_id, message)
+         SELECT manager_id, $1, $2
+           FROM shift_managers
+          WHERE is_active AND (department_id = $3 OR manager_id = $4)
+         RETURNING manager_id
+       )
+       SELECT m.email, m.first_name FROM n JOIN shift_managers m USING (manager_id)`,
       [
         prediction.prediction_id,
         `High risk incident #${incident.incident_id} (${incident.incident_type}) on the ${shift.shift_type} shift.${reason}`,
@@ -114,6 +119,10 @@ async function runPrediction(incident, shift) {
         shift.manager_id,
       ]
     );
+    // Not awaited: the incident response shouldn't wait on SMTP, and an email failure
+    // must not fail the request.
+    emailHighRisk({ incident, shift, prediction, recipients: notified.rows })
+      .catch((err) => console.error('[alerts] High risk email failed:', err));
   }
 
   return { prediction };

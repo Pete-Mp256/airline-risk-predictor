@@ -1,13 +1,16 @@
+import { AlertIcon } from './Icons';
+
+// High is the only filled badge (with an alert icon) so it stands out from brand red buttons.
 const RISK_STYLES = {
-  Low: 'bg-emerald-50 text-emerald-800 ring-emerald-600/30',
-  Medium: 'bg-amber-50 text-amber-800 ring-amber-600/30',
-  High: 'bg-red-50 text-red-800 ring-red-600/30',
+  Low: 'bg-risk-low-tint text-risk-low-ink ring-risk-low/40',
+  Medium: 'bg-risk-medium-tint text-risk-medium-ink ring-risk-medium/50',
+  High: 'bg-risk-high text-white ring-risk-high',
 };
 
 const STATUS_STYLES = {
   Pending: 'bg-slate-100 text-slate-700 ring-slate-500/20',
-  'In Progress': 'bg-accent-50 text-accent-800 ring-accent-600/30',
-  Complete: 'bg-emerald-50 text-emerald-800 ring-emerald-600/30',
+  'In Progress': 'bg-sky-50 text-sky-800 ring-sky-600/30',
+  Complete: 'bg-risk-low-tint text-risk-low-ink ring-risk-low/40',
 };
 
 const BASE = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset';
@@ -20,6 +23,7 @@ export function RiskBadge({ level, confidence, size = 'sm' }) {
   const large = size === 'lg' ? 'px-3 py-1 text-sm' : '';
   return (
     <span className={`${BASE} ${RISK_STYLES[level]} ${large}`}>
+      {level === 'High' && <AlertIcon className="h-3.5 w-3.5" />}
       <span className="font-semibold">{level} risk</span>
       {confidence != null && <span>· {Math.round(Number(confidence) * 100)}%</span>}
     </span>

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api, { apiError } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import AuthCard from '../components/AuthCard';
+import GoogleSignIn from '../components/GoogleSignIn';
 
 const EMPTY = { first_name: '', last_name: '', email: '', phone: '', department_id: '', password: '', confirm: '' };
 
@@ -64,7 +65,8 @@ export default function RegisterPage() {
       subtitle="Register as a shift manager."
       footer={<>Already registered? <Link to="/login" className="font-medium text-accent-700 hover:underline">Log in</Link></>}
     >
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <GoogleSignIn text="signup_with" onSignedIn={() => navigate('/shifts', { replace: true })} />
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4" noValidate>
         {message && <p className="alert-error" role="alert">{message}</p>}
         <div className="grid gap-4 sm:grid-cols-2">
           {field('first_name', 'First name', { autoComplete: 'given-name' })}

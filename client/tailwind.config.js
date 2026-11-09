@@ -4,21 +4,35 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Archivo', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // Muted steel blue used for buttons, links and the timeline.
+        // Brand crimson (Kenya Airways-inspired) for buttons, links, focus rings and the livery stripe.
+        // Kept separate from the risk colours below so brand red never reads as "High risk".
         accent: {
-          50: '#f2f6fb',
-          100: '#e3ecf6',
-          200: '#c8d9ec',
-          300: '#a3c0df',
-          400: '#86abd3',
-          500: '#6f9bc8',
-          600: '#5a86b3',
-          700: '#4a7099',
-          800: '#3d5c7e',
-          900: '#2f4761',
+          50: '#fdf2f3',
+          100: '#fbe3e6',
+          200: '#f6c5cc',
+          300: '#ee98a4',
+          400: '#e25e70',
+          500: '#d4263f',
+          600: '#c8102e',
+          700: '#a50d26',
+          800: '#870c22',
+          900: '#6f0d20',
+        },
+        ink: '#1f2328',
+        // Risk levels: green / amber / vermilion-orange. High is the only filled badge.
+        risk: {
+          low: '#2f9e77',
+          'low-tint': '#e8f5ef',
+          'low-ink': '#1d6b50',
+          medium: '#e8a200',
+          'medium-tint': '#fdf4dc',
+          'medium-ink': '#8a5a00',
+          high: '#d9480f',
+          'high-tint': '#fdece4',
+          'high-ink': '#9c3008',
         },
       },
     },

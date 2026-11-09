@@ -62,7 +62,7 @@ export default function RegisterPage() {
   return (
     <AuthCard
       title="Create an account"
-      subtitle="Register as a shift manager."
+      subtitle="Create a staff account."
       footer={<>Already registered? <Link to="/login" className="font-medium text-accent-700 hover:underline">Log in</Link></>}
     >
       <GoogleSignIn text="signup_with" onSignedIn={() => navigate('/shifts', { replace: true })} />

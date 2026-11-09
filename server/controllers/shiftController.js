@@ -8,12 +8,14 @@ const SHIFT_SELECT = `
   SELECT s.*,
          m.first_name || ' ' || m.last_name AS manager_name,
          d.name AS department_name,
+         h.handover_id, h.status AS handover_status,
          (SELECT COUNT(*)::int FROM tasks t WHERE t.shift_id = s.shift_id) AS task_count,
          (SELECT COUNT(*)::int FROM tasks t
            WHERE t.shift_id = s.shift_id AND t.status <> 'Complete') AS open_task_count
     FROM shifts s
     JOIN shift_managers m ON m.manager_id = s.manager_id
-    JOIN departments d ON d.department_id = s.department_id`;
+    JOIN departments d ON d.department_id = s.department_id
+    LEFT JOIN handovers h ON h.shift_id = s.shift_id`;
 
 function isStaffCount(value) {
   return Number.isInteger(value) && value >= 0;

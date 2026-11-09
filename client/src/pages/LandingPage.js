@@ -28,22 +28,22 @@ const STEPS = [
   },
   {
     title: 'Hand over with reasons',
-    text: 'The handover shows the three readings that drove each rating, so the incoming manager knows what to deal with first.',
+    text: 'The handover shows the three readings that drove each rating, so the incoming staff know what to deal with first.',
   },
 ];
 
 const AUTOMATIONS = [
   {
     title: 'High risk email',
-    text: 'The shift manager is emailed the rating and its reasons as soon as a High risk incident is logged.',
+    text: 'Staff on the shift are emailed the rating and its reasons as soon as a High risk incident is logged.',
   },
   {
     title: 'Handover summary',
-    text: 'When a shift ends, the next manager on duty receives its open tasks, incidents and notes.',
+    text: 'When a shift ends, the next person on duty receives its open tasks, incidents and notes.',
   },
   {
     title: 'Unfinished task reminders',
-    text: 'Managers are reminded about tasks still open shortly before their shift ends.',
+    text: 'Staff are reminded about tasks still open shortly before their shift ends.',
   },
   {
     title: 'Escalation',

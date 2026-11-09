@@ -33,3 +33,13 @@ export function RiskBadge({ level, confidence, size = 'sm' }) {
 export function StatusBadge({ status }) {
   return <span className={`${BASE} ${STATUS_STYLES[status] || STATUS_STYLES.Pending}`}>{status}</span>;
 }
+
+const HANDOVER_STYLES = {
+  Draft: 'bg-slate-100 text-slate-700 ring-slate-500/20',
+  Submitted: 'bg-accent-50 text-accent-800 ring-accent-600/30',
+  Acknowledged: 'bg-risk-low-tint text-risk-low-ink ring-risk-low/40',
+};
+
+export function HandoverStatusBadge({ status }) {
+  return <span className={`${BASE} ${HANDOVER_STYLES[status] || HANDOVER_STYLES.Draft}`}>{status}</span>;
+}

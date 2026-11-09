@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import api, { apiError } from '../api';
 
-// Handover notes and staff count; editable by the shift owner only.
+// Shift notes and staff count; editable by the shift owner only. Used by the end-of-shift
+// email when the shift has no submitted handover.
 export default function ShiftNotes({ shift, canEdit, onSaved }) {
   const [editing, setEditing] = useState(false);
   const [notes, setNotes] = useState(shift.notes || '');
@@ -38,10 +39,10 @@ export default function ShiftNotes({ shift, canEdit, onSaved }) {
   if (editing) {
     return (
       <form onSubmit={save} className="card space-y-3">
-        <h2 className="section-title">Handover notes</h2>
+        <h2 className="section-title">Shift notes</h2>
         {error && <p className="alert-error" role="alert">{error}</p>}
         <div>
-          <label htmlFor="notes" className="label">Notes for the next shift</label>
+          <label htmlFor="notes" className="label">Notes about this shift</label>
           <textarea id="notes" rows="4" className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
         <div className="max-w-[10rem]">
@@ -60,7 +61,7 @@ export default function ShiftNotes({ shift, canEdit, onSaved }) {
   return (
     <section className="card">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="section-title">Handover notes</h2>
+        <h2 className="section-title">Shift notes</h2>
         {canEdit && <button type="button" className="btn-secondary px-3 py-1.5" onClick={startEdit}>Edit</button>}
       </div>
       {shift.notes ? (

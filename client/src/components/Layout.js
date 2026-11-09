@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { CalendarClock, ChevronRight, LayoutDashboard, Menu } from 'lucide-react';
+import { CalendarClock, ChevronRight, ClipboardCheck, LayoutDashboard, Menu } from 'lucide-react';
+import api from '../api';
 import { cn } from 'lib/utils';
 import { Button } from 'components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from 'components/ui/sheet';
@@ -9,19 +10,22 @@ import NotificationBell from './NotificationBell';
 import ProfileMenu from './ProfileMenu';
 
 const NAV = [
-  { to: '/shifts', label: 'Shifts', icon: CalendarClock, hint: 'Handovers, tasks and incidents' },
+  { to: '/shifts', label: 'Shifts', icon: CalendarClock, hint: 'Tasks, incidents and handover' },
+  { to: '/handovers', label: 'Handovers', icon: ClipboardCheck, hint: 'Incoming and sent' },
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, hint: 'Risk trends and summaries' },
 ];
 
 // Breadcrumb trail for the top bar, from the current path.
 function crumbsFor(pathname) {
   if (pathname.startsWith('/shifts/')) return [{ to: '/shifts', label: 'Shifts' }, { label: 'Shift handover' }];
+  if (pathname.startsWith('/handovers/')) return [{ to: '/handovers', label: 'Handovers' }, { label: 'Handover' }];
   if (pathname.startsWith('/incidents/')) return [{ to: '/shifts', label: 'Shifts' }, { label: 'Incident' }];
   const item = NAV.find((n) => pathname.startsWith(n.to));
   return [{ label: item ? item.label : 'Page not found' }];
 }
 
-function NavItems() {
+// counts: { [path]: number } shown as a badge, e.g. handovers waiting for acknowledgement.
+function NavItems({ counts = {} }) {
   return (
     <nav className="flex flex-col gap-1" aria-label="Main">
       <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Workspace</p>
@@ -46,6 +50,12 @@ function NavItems() {
                   {label}
                   <span className="text-[11px] font-normal text-slate-400">{hint}</span>
                 </span>
+                {counts[to] > 0 && (
+                  <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent-600 px-1.5 text-[11px] font-semibold text-white"
+                    aria-label={`${counts[to]} waiting`}>
+                    {counts[to] > 9 ? '9+' : counts[to]}
+                  </span>
+                )}
               </>
             )}
           </NavLink>
@@ -55,7 +65,7 @@ function NavItems() {
   );
 }
 
-function SidebarBody() {
+function SidebarBody({ counts }) {
   return (
     <>
       <div className="livery" aria-hidden="true" />
@@ -63,7 +73,7 @@ function SidebarBody() {
         <Link to="/shifts" aria-label="Incident Risk home"><Logo /></Link>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-2">
-        <NavItems />
+        <NavItems counts={counts} />
       </div>
       <div className="border-t p-3">
         <ProfileMenu variant="full" />
@@ -77,13 +87,28 @@ export default function Layout() {
   const crumbs = crumbsFor(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const [waiting, setWaiting] = useState(0);
+
   // Close the mobile menu after navigating.
   useEffect(() => setMenuOpen(false), [pathname]);
+
+  // Submitted handovers waiting for me (or my department) to acknowledge. Refreshed on navigation
+  // and when a page fires "handovers:refresh".
+  useEffect(() => {
+    const load = () => api
+      .get('/handovers', { params: { box: 'incoming' } })
+      .then((res) => setWaiting(res.data.handovers.filter((h) => h.status === 'Submitted').length))
+      .catch(() => {});
+    load();
+    window.addEventListener('handovers:refresh', load);
+    return () => window.removeEventListener('handovers:refresh', load);
+  }, [pathname]);
+  const counts = { '/handovers': waiting };
 
   return (
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-[264px_1fr]">
       <aside className="sticky top-0 hidden h-screen flex-col border-r bg-slate-50/70 lg:flex">
-        <SidebarBody />
+        <SidebarBody counts={counts} />
       </aside>
 
       <div className="flex min-w-0 flex-col">
@@ -97,7 +122,7 @@ export default function Layout() {
             <SheetContent side="left" className="p-0">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               <SheetDescription className="sr-only">Main navigation</SheetDescription>
-              <SidebarBody />
+              <SidebarBody counts={counts} />
             </SheetContent>
           </Sheet>
 

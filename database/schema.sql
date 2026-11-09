@@ -171,6 +171,7 @@ CREATE TABLE handovers (
     submitted_at    TIMESTAMPTZ,
     acknowledged_at TIMESTAMPTZ,
     acknowledged_by INTEGER REFERENCES shift_managers(manager_id) ON DELETE SET NULL,
+    escalated_at    TIMESTAMPTZ,  -- set when unticked High risk items are escalated to a supervisor
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

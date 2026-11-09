@@ -8,6 +8,7 @@ const JOBS = [
   ['handover summary', require('./handoverSummary')],
   ['task reminders', require('./taskReminders')],
   ['alert escalation', require('./alertEscalation')],
+  ['handover escalation', require('./handoverEscalation')],
 ];
 
 function start() {

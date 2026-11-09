@@ -7,6 +7,7 @@ const { sendMail } = require('../services/mailer');
 const handoverSummary = require('../jobs/handoverSummary');
 const taskReminders = require('../jobs/taskReminders');
 const alertEscalation = require('../jobs/alertEscalation');
+const handoverEscalation = require('../jobs/handoverEscalation');
 
 beforeEach(() => {
   pool.query.mockReset();
@@ -159,6 +160,54 @@ describe('alert escalation job', () => {
     pool.query.mockResolvedValueOnce({ rows: [] });
 
     expect(await alertEscalation.run()).toEqual({ predictions: 0, sent: 0 });
+    expect(pool.query).toHaveBeenCalledTimes(1);
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+});
+
+describe('handover escalation job', () => {
+  afterEach(() => {
+    delete process.env.ESCALATION_EMAIL;
+    delete process.env.ESCALATION_MINUTES;
+  });
+
+  test('does nothing when no supervisor email is configured', async () => {
+    expect(await handoverEscalation.run()).toEqual({ handovers: 0, sent: 0 });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  test('claims submitted handovers with unticked High items and emails each supervisor', async () => {
+    process.env.ESCALATION_EMAIL = 'ops@example.com, duty@example.com';
+    process.env.ESCALATION_MINUTES = '20';
+    pool.query.mockResolvedValueOnce({ rows: [{
+      handover_id: 5, shift_id: 2, submitted_at: '2026-11-03T03:05:00Z', shift_type: 'Night',
+      shift_date: '2026-11-02', department_name: 'Line Maintenance',
+      from_manager_name: 'Amina Odhiambo', to_manager_name: 'Brian Kamau',
+      high_items: [{ incident_id: 10, incident_type: 'Hardware', occurred_at: '2026-11-02T23:00:00Z' }],
+    }] });
+
+    const result = await handoverEscalation.run();
+
+    expect(result).toEqual({ handovers: 1, sent: 2 });
+    const [sql, params] = pool.query.mock.calls[0];
+    expect(sql).toMatch(/UPDATE handovers SET escalated_at = NOW\(\)/);
+    expect(sql).toMatch(/status = 'Submitted' AND escalated_at IS NULL/);
+    expect(sql).toMatch(/hi\.acknowledged_at IS NULL AND p\.final_risk_level = 'High'/);
+    expect(params).toEqual([20]);
+    expect(sendMail.mock.calls.map((c) => c[0].to)).toEqual(['ops@example.com', 'duty@example.com']);
+    const mail = sendMail.mock.calls[0][0];
+    expect(mail.subject).toBe('Escalated: unacknowledged High risk handover, Night shift, Line Maintenance');
+    expect(mail.text).toMatch(/from Amina Odhiambo to Brian Kamau/);
+    expect(mail.text).toMatch(/1 High risk item is still not ticked after 20 minutes/);
+    expect(mail.text).toMatch(/Hardware \(incident #10\)/);
+    expect(mail.text).toMatch(/\/handovers\/5/);
+  });
+
+  test('sends nothing when no handover qualifies (already escalated, ticked or too recent)', async () => {
+    process.env.ESCALATION_EMAIL = 'ops@example.com';
+    pool.query.mockResolvedValueOnce({ rows: [] });
+
+    expect(await handoverEscalation.run()).toEqual({ handovers: 0, sent: 0 });
     expect(pool.query).toHaveBeenCalledTimes(1);
     expect(sendMail).not.toHaveBeenCalled();
   });

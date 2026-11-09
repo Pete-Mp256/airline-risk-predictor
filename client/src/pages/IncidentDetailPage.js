@@ -55,7 +55,7 @@ export default function IncidentDetailPage() {
         </p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="page-title">{incident.incident_type}</h1>
-          <RiskBadge level={latest?.risk_level} confidence={latest?.confidence} />
+          <RiskBadge level={latest?.final_risk_level} confidence={latest?.confidence} />
         </div>
         <p className="mt-1 text-sm text-slate-600">{incident.description}</p>
       </div>
@@ -105,6 +105,8 @@ export default function IncidentDetailPage() {
                 <tr>
                   <th className="py-2 pr-4">When</th>
                   <th className="py-2 pr-4">Risk</th>
+                  <th className="py-2 pr-4">Model rating</th>
+                  <th className="py-2 pr-4">Handover</th>
                   <th className="py-2 pr-4">Model</th>
                   <th className="py-2 pr-4 text-right">Threshold</th>
                   <th className="py-2 text-right">Response</th>
@@ -114,7 +116,9 @@ export default function IncidentDetailPage() {
                 {predictions.map((p) => (
                   <tr key={p.prediction_id}>
                     <td className="py-2 pr-4">{formatDateTime(p.created_at)}</td>
-                    <td className="py-2 pr-4"><RiskBadge level={p.risk_level} confidence={p.confidence} /></td>
+                    <td className="py-2 pr-4"><RiskBadge level={p.final_risk_level} confidence={p.confidence} /></td>
+                    <td className="py-2 pr-4">{p.risk_level}</td>
+                    <td className="py-2 pr-4">{p.handover_level}</td>
                     <td className="py-2 pr-4">{p.model_version || '—'}</td>
                     <td className="py-2 pr-4 text-right tabular-nums">{p.high_threshold ?? '—'}</td>
                     <td className="py-2 text-right tabular-nums">{p.response_ms != null ? `${p.response_ms} ms` : '—'}</td>

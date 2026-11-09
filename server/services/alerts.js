@@ -53,6 +53,10 @@ function emailHighRisk({ incident, shift, prediction, recipients }) {
   const confidence = `${Math.round(Number(prediction.confidence) * 100)}%`;
   const link = appUrl(`/incidents/${incident.incident_id}`);
   const reasons = factors.map((f) => `${describeFeature(f.feature, f.value)} ${f.effect === 'raises' ? 'raised' : 'lowered'} the score`);
+  // Module 2: the handover checks that fired, and whether they raised the model's rating.
+  const flags = (prediction.handover_flags || []).map((f) => f.label);
+  const raised = prediction.risk_level && prediction.risk_level !== 'High'
+    ? `The model rated it ${prediction.risk_level}; the handover checks raised it to High.` : '';
 
   return sendToEach(recipients, (r) => ({
     subject: `High risk: ${incident.incident_type} on the ${shift.shift_type} shift`,
@@ -60,6 +64,8 @@ function emailHighRisk({ incident, shift, prediction, recipients }) {
       `Hello ${r.first_name},\n\nIncident #${incident.incident_id} (${incident.incident_type}) on the ` +
       `${shift.shift_type} shift was rated High risk (${confidence}).\n\n` +
       (reasons.length ? `Why:\n${reasons.map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\n` : '') +
+      (raised ? `${raised}\n\n` : '') +
+      (flags.length ? `Handover checks:\n${flags.map((x) => `- ${x}`).join('\n')}\n\n` : '') +
       `Treat it as a priority at handover and brief the incoming shift.\n${link}`,
     html: layout(
       `<p>Hello ${escapeHtml(r.first_name)},</p>` +
@@ -67,6 +73,8 @@ function emailHighRisk({ incident, shift, prediction, recipients }) {
       `${escapeHtml(shift.shift_type)} shift was rated ` +
       `<strong style="color:#d9480f">High risk (${confidence})</strong>.</p>` +
       (reasons.length ? `<p style="margin-bottom:4px">Why the model said this:</p><ol>${reasons.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ol>` : '') +
+      (raised ? `<p>${escapeHtml(raised)}</p>` : '') +
+      (flags.length ? `<p style="margin-bottom:4px">Handover checks:</p><ul>${flags.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : '') +
       '<p>Treat it as a priority at handover and brief the incoming shift.</p>' +
       button(link, 'Open the incident')
     ),
@@ -78,9 +86,9 @@ function emailHandoverSummary({ shift, tasks, incidents, recipients }) {
   const link = appUrl(`/shifts/${shift.shift_id}`);
   const title = `${shift.shift_type} shift, ${shift.department_name}`;
   const when = `${formatTime(shift.start_time)} to ${formatTime(shift.end_time)}`;
-  const high = incidents.filter((i) => i.risk_level === 'High').length;
+  const high = incidents.filter((i) => i.final_risk_level === 'High').length;
   const taskLine = (t) => `${t.title}${t.aircraft_reg ? ` (${t.aircraft_reg})` : ''}: ${t.status}`;
-  const incidentLine = (i) => `${formatTime(i.occurred_at)} ${i.incident_type}: ${i.risk_level ? `${i.risk_level} risk` : 'not predicted'}`;
+  const incidentLine = (i) => `${formatTime(i.occurred_at)} ${i.incident_type}: ${i.final_risk_level ? `${i.final_risk_level} risk` : 'not predicted'}`;
 
   const textSection = (heading, items, line, empty) =>
     `${heading}\n${items.length ? items.map((x) => `- ${line(x)}`).join('\n') : empty}\n\n`;

@@ -28,8 +28,8 @@ describe('handover summary job', () => {
   };
   const tasks = [{ task_id: 1, title: 'Borescope engine 2', aircraft_reg: '5Y-ABC', status: 'In Progress' }];
   const incidents = [
-    { incident_id: 3, incident_type: 'Hardware', occurred_at: '2026-11-02T23:00:00Z', risk_level: 'High' },
-    { incident_id: 4, incident_type: 'Power failure', occurred_at: '2026-11-03T01:00:00Z', risk_level: null },
+    { incident_id: 3, incident_type: 'Hardware', occurred_at: '2026-11-02T23:00:00Z', risk_level: 'High', final_risk_level: 'High' },
+    { incident_id: 4, incident_type: 'Power failure', occurred_at: '2026-11-03T01:00:00Z', risk_level: null, final_risk_level: null },
   ];
 
   test('claims ended shifts and emails the next manager on duty', async () => {

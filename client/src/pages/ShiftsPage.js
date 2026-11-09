@@ -184,9 +184,9 @@ export default function ShiftsPage() {
               id: i.incident_id,
               when: formatDateTime(i.occurred_at),
               title: i.incident_type,
-              detail: `${i.risk_level ? `${i.risk_level} risk` : 'Not predicted'} · ${i.shift_type} · ${i.department_name}`,
-              tone: i.risk_level || 'muted',
-              alert: i.risk_level === 'High',
+              detail: `${i.final_risk_level ? `${i.final_risk_level} risk` : 'Not predicted'} · ${i.shift_type} · ${i.department_name}`,
+              tone: i.final_risk_level || 'muted',
+              alert: i.final_risk_level === 'High',
               to: `/incidents/${i.incident_id}`,
             }))}
           />

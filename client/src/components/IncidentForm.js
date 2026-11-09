@@ -25,7 +25,7 @@ function emptyForm() {
 }
 
 // Logs an incident on a shift and shows the model's risk prediction.
-export default function IncidentForm({ shift, tasks, onLogged, onClose }) {
+export default function IncidentForm({ shift, tasks, carriedTasks = [], onLogged, onClose }) {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState('');
@@ -37,7 +37,7 @@ export default function IncidentForm({ shift, tasks, onLogged, onClose }) {
       const next = { ...f, [field]: value };
       // Picking a task fills in its current status (the model input).
       if (field === 'task_id') {
-        const task = tasks.find((t) => String(t.task_id) === value);
+        const task = [...tasks, ...carriedTasks].find((t) => String(t.task_id) === value);
         next.task_status = task ? task.status : '';
       }
       return next;
@@ -141,7 +141,16 @@ export default function IncidentForm({ shift, tasks, onLogged, onClose }) {
           <label htmlFor="task_id" className="label">Related task (optional)</label>
           <select id="task_id" className="input" value={form.task_id} onChange={(e) => update('task_id', e.target.value)}>
             <option value="">No task</option>
-            {tasks.map((t) => <option key={t.task_id} value={t.task_id}>{t.title}</option>)}
+            {carriedTasks.length > 0 ? (
+              <>
+                <optgroup label="This shift">
+                  {tasks.map((t) => <option key={t.task_id} value={t.task_id}>{t.title}</option>)}
+                </optgroup>
+                <optgroup label="Carried over from the previous shift">
+                  {carriedTasks.map((t) => <option key={t.task_id} value={t.task_id}>{t.title}</option>)}
+                </optgroup>
+              </>
+            ) : tasks.map((t) => <option key={t.task_id} value={t.task_id}>{t.title}</option>)}
           </select>
           {error('task_id')}
         </div>

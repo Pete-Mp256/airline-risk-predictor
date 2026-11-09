@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS tasks CASCADE;
 DROP TABLE IF EXISTS shifts CASCADE;
 DROP TABLE IF EXISTS shift_managers CASCADE;
 DROP TABLE IF EXISTS departments CASCADE;
+DROP TYPE IF EXISTS handover_level;
 DROP TYPE IF EXISTS handover_item_type;
 DROP TYPE IF EXISTS handover_status;
 DROP TYPE IF EXISTS risk_level;
@@ -21,6 +22,8 @@ CREATE TYPE risk_level AS ENUM ('Low', 'Medium', 'High');
 CREATE TYPE shift_type AS ENUM ('Morning', 'Afternoon', 'Night');
 -- Same labels the model was trained on; Node maps pending/in-progress/complete to these.
 CREATE TYPE task_status AS ENUM ('Pending', 'In Progress', 'Complete');
+-- Handover rule layer (Module 2): Weak when 2+ handover checks fire.
+CREATE TYPE handover_level AS ENUM ('OK', 'Weak');
 
 -- DEPARTMENTS (stored for the dashboard, not a model feature)
 CREATE TABLE departments (
@@ -129,11 +132,15 @@ CREATE TABLE incident_predictions (
     high_threshold      NUMERIC(4,3),     -- model_meta.json high_threshold at prediction time
     model_version       VARCHAR(50),
     response_ms         INTEGER,
+    handover_flags      JSONB NOT NULL DEFAULT '[]',  -- [{code, label}, ...] handover checks that fired
+    handover_level      handover_level NOT NULL DEFAULT 'OK',
+    final_risk_level    risk_level NOT NULL,          -- after the handover checks; risk_level is the model rating
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_predictions_incident ON incident_predictions(incident_id);
 CREATE INDEX idx_predictions_risk_level ON incident_predictions(risk_level);
+CREATE INDEX idx_predictions_final_risk_level ON incident_predictions(final_risk_level);
 
 -- NOTIFICATIONS
 CREATE TABLE notifications (

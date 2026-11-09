@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const { SHIFT_TYPES, toShiftType } = require('../utils/labels');
 const { parseId, isTimestamp, buildSet, invalid } = require('../utils/request');
+const { CARRIED_TASK_IDS } = require('../services/handoverRules');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -107,7 +108,8 @@ async function createShift(req, res, next) {
   }
 }
 
-// Handover view: the shift with its tasks and incidents (latest prediction each).
+// Handover view: the shift with its tasks, the tasks the previous handover carried over to it,
+// and its incidents (latest prediction each).
 async function getShift(req, res, next) {
   const shiftId = parseId(req.params.id);
   if (!shiftId) return res.status(404).json({ message: 'Shift not found' });
@@ -122,13 +124,13 @@ async function getShift(req, res, next) {
     );
     const incidentsResult = await pool.query(
       `SELECT i.*,
-              p.prediction_id, p.risk_level, p.confidence, p.top_factors
+              p.prediction_id, p.risk_level, p.final_risk_level, p.handover_level, p.confidence, p.top_factors
          FROM incidents i
          LEFT JOIN LATERAL (
-           SELECT prediction_id, risk_level, confidence, top_factors
+           SELECT prediction_id, risk_level, final_risk_level, handover_level, confidence, top_factors
              FROM incident_predictions
             WHERE incident_id = i.incident_id
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, prediction_id DESC
             LIMIT 1
          ) p ON TRUE
         WHERE i.shift_id = $1
@@ -136,9 +138,15 @@ async function getShift(req, res, next) {
       [shiftId]
     );
 
+    const carriedResult = await pool.query(
+      `SELECT t.* FROM tasks t WHERE t.task_id IN (${CARRIED_TASK_IDS}) ORDER BY t.created_at, t.task_id`,
+      [shiftId]
+    );
+
     res.json({
       shift: shiftResult.rows[0],
       tasks: tasksResult.rows,
+      carried_tasks: carriedResult.rows,
       incidents: incidentsResult.rows,
     });
   } catch (err) {

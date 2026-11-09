@@ -27,7 +27,7 @@ function ItemBody({ item }) {
         <Link to={`/incidents/${item.incident_id}`} className="link">{item.incident_type}</Link>
         <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <span>{formatDateTime(item.occurred_at)}</span>
-          <RiskBadge level={item.risk_level} />
+          <RiskBadge level={item.final_risk_level} />
         </p>
       </div>
     );

@@ -29,7 +29,7 @@ function handoverRow(overrides = {}) {
 
 const ITEMS = [
   { item_id: 1, item_type: 'Open task', task_id: 3, task_title: 'Borescope engine 1', aircraft_reg: '5Y-KZA', task_status: 'Pending', carried_over: true },
-  { item_id: 2, item_type: 'Incident', incident_id: 3, incident_type: 'Power failure', occurred_at: '2026-10-20T23:30:00.000Z', risk_level: 'High' },
+  { item_id: 2, item_type: 'Incident', incident_id: 3, incident_type: 'Power failure', occurred_at: '2026-10-20T23:30:00.000Z', risk_level: 'High', final_risk_level: 'High' },
   { item_id: 3, item_type: 'Note', note: 'Spare GPU is in bay 2' },
 ];
 

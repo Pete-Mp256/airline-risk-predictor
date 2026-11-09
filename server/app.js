@@ -7,6 +7,8 @@ const taskRoutes = require('./routes/tasks');
 const incidentRoutes = require('./routes/incidents');
 const notificationRoutes = require('./routes/notifications');
 const dashboardRoutes = require('./routes/dashboard');
+const handoverRoutes = require('./routes/handovers');
+const managerRoutes = require('./routes/managers');
 
 const app = express();
 
@@ -24,6 +26,8 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/handovers', handoverRoutes);
+app.use('/api/managers', managerRoutes);
 
 // Unknown routes
 app.use((req, res) => {

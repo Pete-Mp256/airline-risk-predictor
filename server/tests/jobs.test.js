@@ -5,6 +5,7 @@ jest.mock('../services/mailer', () => ({ sendMail: jest.fn().mockResolvedValue()
 const pool = require('../config/db');
 const { sendMail } = require('../services/mailer');
 const handoverSummary = require('../jobs/handoverSummary');
+const taskReminders = require('../jobs/taskReminders');
 
 beforeEach(() => {
   pool.query.mockReset();
@@ -73,5 +74,43 @@ describe('handover summary job', () => {
 
     expect(await handoverSummary.run()).toEqual({ shifts: 0, sent: 0 });
     expect(sendMail).not.toHaveBeenCalled();
+  });
+});
+
+describe('task reminders job', () => {
+  const open = (task_id, shift_id, title) => ({
+    task_id, title, aircraft_reg: null, status: 'Pending',
+    shift_id, manager_id: shift_id, shift_type: 'Night', end_time: '2026-11-03T03:00:00Z',
+  });
+
+  test('sends one reminder per shift listing its open tasks, with an in-app notification', async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [open(1, 7, 'Borescope'), open(2, 7, 'Tyre change'), open(3, 8, 'Oil top-up')] })
+      .mockResolvedValueOnce({ rows: [{ email: 'amina@example.com', first_name: 'Amina' }] })
+      .mockResolvedValueOnce({ rows: [] }) // notification for shift 7
+      .mockResolvedValueOnce({ rows: [{ email: 'brian@example.com', first_name: 'Brian' }] })
+      .mockResolvedValueOnce({ rows: [] }); // notification for shift 8
+
+    const result = await taskReminders.run();
+
+    expect(result).toEqual({ tasks: 3, sent: 2 });
+    expect(pool.query.mock.calls[0][0]).toMatch(/SET reminder_sent_at = NOW\(\)[\s\S]*reminder_sent_at IS NULL/);
+    expect(pool.query.mock.calls[0][1]).toEqual([60]);
+    expect(pool.query.mock.calls[2][1].slice(0, 2)).toEqual([7, 7]);
+    expect(pool.query.mock.calls[2][1][2]).toMatch(/^2 tasks still open on your Night shift/);
+    const mail = sendMail.mock.calls[0][0];
+    expect(mail.subject).toBe('2 tasks still open on your Night shift');
+    expect(mail.text).toMatch(/- Borescope: Pending\n- Tyre change: Pending/);
+    expect(sendMail.mock.calls[1][0].subject).toBe('1 task still open on your Night shift');
+  });
+
+  test('uses REMINDER_LEAD_MINUTES for the window', async () => {
+    process.env.REMINDER_LEAD_MINUTES = '30';
+    pool.query.mockResolvedValueOnce({ rows: [] });
+
+    await taskReminders.run();
+
+    expect(pool.query.mock.calls[0][1]).toEqual([30]);
+    delete process.env.REMINDER_LEAD_MINUTES;
   });
 });

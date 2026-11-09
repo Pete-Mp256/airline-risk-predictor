@@ -6,6 +6,7 @@ const cron = require('node-cron');
 // [name, module]: each module exports run() -> { sent, ... } counts.
 const JOBS = [
   ['handover summary', require('./handoverSummary')],
+  ['task reminders', require('./taskReminders')],
 ];
 
 function start() {

@@ -62,6 +62,7 @@ export default function NotificationBell() {
     }
     setOpen(false);
     if (n.incident_id) navigate(`/incidents/${n.incident_id}`);
+    else if (n.shift_id) navigate(`/shifts/${n.shift_id}`);
   }
 
   return (

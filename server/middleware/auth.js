@@ -10,7 +10,12 @@ module.exports = function auth(req, res, next) {
   }
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    // A pending 2FA token only works on the verify and resend routes.
+    if (payload.purpose) {
+      return res.status(401).json({ message: 'Invalid or expired token' });
+    }
+    req.user = payload;
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Invalid or expired token' });

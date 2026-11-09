@@ -93,11 +93,17 @@ createdb incident_risk_predictor
 psql -d incident_risk_predictor -f database/schema.sql
 ```
 
+An existing database created before email 2FA needs the migration instead of a fresh schema:
+
+```bash
+psql -d incident_risk_predictor -f database/migrations/001_login_codes.sql
+```
+
 ### 2. API server
 
 ```bash
 cd server
-cp .env.example .env   # then set DB credentials and JWT_SECRET
+cp .env.example .env   # then set DB credentials, JWT_SECRET and the SMTP_* email settings
 npm install
 npm run dev            # http://localhost:5000, health check at /api/health
 ```
@@ -126,6 +132,8 @@ npm start                      # http://localhost:3000, proxies API calls to :50
 |---|---|---|---|
 | Express | `GET` | `/api/health` | Service health check |
 | Flask | `POST` | `/predict` | Returns `{ "risk_level": ..., "confidence": ... }` for a shift or task feature payload |
+
+Logging in is two steps. `POST /api/auth/login` checks the password, emails a 6-digit code and returns a 10-minute `pending_token`. `POST /api/auth/verify-2fa` with that token and the code returns the session token. `POST /api/auth/resend-code` sends a new code, at most once a minute. A code expires after 10 minutes or 5 wrong attempts. If `SMTP_USER` is not set, the code is printed in the server console.
 
 Protected Express routes expect an `Authorization: Bearer <token>` header. The token is verified by [server/middleware/auth.js](server/middleware/auth.js).
 

@@ -1,7 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { PlaneIllustration } from '../components/Icons';
-import { Logo } from '../components/Layout';
+import Logo from '../components/Logo';
 import PredictionResult from '../components/PredictionResult';
 
 // A real prediction from the system (night shift, Base Maintenance), shown as the example.

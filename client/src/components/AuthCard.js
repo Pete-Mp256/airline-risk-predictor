@@ -1,5 +1,5 @@
 import { PlaneIllustration } from './Icons';
-import { Logo } from './Layout';
+import Logo from './Logo';
 
 // Centred card used by the login and register pages.
 export default function AuthCard({ title, subtitle, children, footer }) {

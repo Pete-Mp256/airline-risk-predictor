@@ -6,6 +6,7 @@ const pool = require('../config/db');
 const { sendMail } = require('../services/mailer');
 const handoverSummary = require('../jobs/handoverSummary');
 const taskReminders = require('../jobs/taskReminders');
+const alertEscalation = require('../jobs/alertEscalation');
 
 beforeEach(() => {
   pool.query.mockReset();
@@ -112,5 +113,53 @@ describe('task reminders job', () => {
 
     expect(pool.query.mock.calls[0][1]).toEqual([30]);
     delete process.env.REMINDER_LEAD_MINUTES;
+  });
+});
+
+describe('alert escalation job', () => {
+  afterEach(() => {
+    delete process.env.ESCALATION_EMAIL;
+    delete process.env.ESCALATION_MINUTES;
+  });
+
+  test('does nothing when no supervisor email is configured', async () => {
+    expect(await alertEscalation.run()).toEqual({ predictions: 0, sent: 0 });
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  test('claims predictions nobody has read and emails each supervisor once per prediction', async () => {
+    process.env.ESCALATION_EMAIL = 'ops@example.com, duty@example.com';
+    process.env.ESCALATION_MINUTES = '15';
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ prediction_id: 5 }, { prediction_id: 5 }] }) // two managers notified
+      .mockResolvedValueOnce({ rows: [{
+        prediction_id: 5, confidence: 0.92, created_at: '2026-11-03T06:00:00Z',
+        top_factors: [{ feature: 'tool_wear_min', value: 210, effect: 'raises' }],
+        incident_id: 10, incident_type: 'Hardware', shift_id: 7, shift_type: 'Night',
+        department_name: 'Line Maintenance', manager_name: 'Amina Odhiambo', notified: 2,
+      }] });
+
+    const result = await alertEscalation.run();
+
+    expect(result).toEqual({ predictions: 1, sent: 2 });
+    const [claimSql, claimParams] = pool.query.mock.calls[0];
+    expect(claimSql).toMatch(/SET escalated_at = NOW\(\)/);
+    expect(claimSql).toMatch(/BOOL_AND\(NOT is_read\)/);
+    expect(claimParams).toEqual([15]);
+    expect(pool.query.mock.calls[1][1]).toEqual([[5]]);
+    expect(sendMail.mock.calls.map((c) => c[0].to)).toEqual(['ops@example.com', 'duty@example.com']);
+    const mail = sendMail.mock.calls[0][0];
+    expect(mail.subject).toBe('Escalated: unread High risk alert, Hardware on the Night shift');
+    expect(mail.text).toMatch(/went to 2 managers and none of them has opened it after 15 minutes/);
+    expect(mail.text).toMatch(/Tool wear \(210 min\) raised the score/);
+  });
+
+  test('sends nothing when every alert has been read', async () => {
+    process.env.ESCALATION_EMAIL = 'ops@example.com';
+    pool.query.mockResolvedValueOnce({ rows: [] });
+
+    expect(await alertEscalation.run()).toEqual({ predictions: 0, sent: 0 });
+    expect(pool.query).toHaveBeenCalledTimes(1);
+    expect(sendMail).not.toHaveBeenCalled();
   });
 });

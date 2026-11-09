@@ -100,6 +100,7 @@ psql -d incident_risk_predictor -f database/migrations/001_login_codes.sql
 psql -d incident_risk_predictor -f database/migrations/002_google_signin.sql
 psql -d incident_risk_predictor -f database/migrations/003_handover_summary.sql
 psql -d incident_risk_predictor -f database/migrations/004_task_reminders.sql
+psql -d incident_risk_predictor -f database/migrations/005_alert_escalation.sql
 ```
 
 ### 2. API server

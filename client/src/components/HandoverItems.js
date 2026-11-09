@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { formatDateTime } from '../utils/format';
+import { describeFeature } from '../utils/features';
 import { RiskBadge, StatusBadge } from './Badges';
+import { FlagList, RatingChange } from './HandoverChecks';
 
 const GROUPS = [
   ['Open task', 'Open tasks', 'No open tasks: everything on this shift is complete.'],
@@ -22,13 +24,22 @@ function ItemBody({ item }) {
     );
   }
   if (item.item_type === 'Incident') {
+    const factors = (item.top_factors || []).slice(0, 3);
     return (
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 space-y-1">
         <Link to={`/incidents/${item.incident_id}`} className="link">{item.incident_type}</Link>
-        <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <p className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
           <span>{formatDateTime(item.occurred_at)}</span>
           <RiskBadge level={item.final_risk_level} />
         </p>
+        <RatingChange prediction={item} className="text-xs text-slate-600" />
+        {factors.length > 0 && (
+          <p className="text-xs text-slate-600">
+            <span className="font-medium">Top factors:</span>{' '}
+            {factors.map((f) => `${describeFeature(f.feature, f.value)} ${f.effect === 'raises' ? '↑' : '↓'}`).join(' · ')}
+          </p>
+        )}
+        <FlagList flags={item.handover_flags} className="list-disc space-y-0.5 pl-4 text-xs text-slate-600" />
       </div>
     );
   }

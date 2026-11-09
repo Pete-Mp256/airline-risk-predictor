@@ -169,7 +169,33 @@ function emailEscalation({ alert, minutes, recipients }) {
   }));
 }
 
+// Module 2: a submitted handover with High risk items nobody has ticked after `minutes`.
+function emailHandoverEscalation({ handover, minutes, recipients }) {
+  const link = appUrl(`/handovers/${handover.handover_id}`);
+  const items = handover.high_items || [];
+  const to = handover.to_manager_name || `everyone in ${handover.department_name}`;
+  const summary =
+    `The ${handover.shift_type} shift handover, ${handover.department_name}, from ` +
+    `${handover.from_manager_name} to ${to}, was submitted at ${formatTime(handover.submitted_at)}. ` +
+    `${items.length} High risk item${items.length === 1 ? ' is' : 's are'} still not ticked ` +
+    `after ${minutes} minutes.`;
+  const itemLine = (i) => `${formatTime(i.occurred_at)} ${i.incident_type} (incident #${i.incident_id})`;
+
+  return sendToEach(recipients, () => ({
+    subject: `Escalated: unacknowledged High risk handover, ${handover.shift_type} shift, ${handover.department_name}`,
+    text:
+      `${summary}\n\nHigh risk items:\n${items.map((i) => `- ${itemLine(i)}`).join('\n')}\n\n` +
+      `Follow up with the incoming shift.\n${link}`,
+    html: layout(
+      `<p>${escapeHtml(summary)}</p>` +
+      `<p style="margin-bottom:4px">High risk items:</p><ul>${items.map((i) => `<li>${escapeHtml(itemLine(i))}</li>`).join('')}</ul>` +
+      '<p>Follow up with the incoming shift.</p>' +
+      button(link, 'Open the handover')
+    ),
+  }));
+}
+
 module.exports = {
   appUrl, formatTime, escapeHtml, layout, button, sendToEach,
-  emailHighRisk, emailHandoverSummary, emailTaskReminder, emailEscalation,
+  emailHighRisk, emailHandoverSummary, emailTaskReminder, emailEscalation, emailHandoverEscalation,
 };

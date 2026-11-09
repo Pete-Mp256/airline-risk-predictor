@@ -1,5 +1,6 @@
 import { describeFeature } from '../utils/features';
 import { RiskBadge } from './Badges';
+import { FlagList, RatingChange } from './HandoverChecks';
 
 const BAR_COLOURS = { Low: 'bg-risk-low', Medium: 'bg-risk-medium', High: 'bg-risk-high' };
 const LEVELS = ['Low', 'Medium', 'High'];
@@ -17,7 +18,6 @@ export default function PredictionResult({ prediction }) {
   const factors = (prediction.top_factors || []).slice(0, 3);
   const threshold = prediction.high_threshold;
   const finalLevel = prediction.final_risk_level || prediction.risk_level;
-  const raised = finalLevel !== prediction.risk_level;
   const flags = prediction.handover_flags || [];
 
   return (
@@ -26,24 +26,17 @@ export default function PredictionResult({ prediction }) {
         <RiskBadge level={finalLevel} confidence={prediction.confidence} size="lg" />
         <p className="text-sm text-slate-600">{SUMMARY[finalLevel]}</p>
       </div>
-      {raised && (
-        <p className="text-sm text-slate-600">
-          Model rating: <span className="font-medium">{prediction.risk_level}</span> · Raised to{' '}
-          <span className="font-medium">{finalLevel}</span> by handover checks.
-        </p>
-      )}
 
       {prediction.handover_level && (
         <div>
-          <h3 className="text-sm font-semibold text-slate-700">
-            Handover checks: {prediction.handover_level === 'Weak' ? 'Weak handover' : 'OK'}
-          </h3>
+          <RatingChange prediction={prediction} className="text-sm text-slate-700" />
           {flags.length === 0 ? (
             <p className="mt-1 text-sm text-slate-500">No handover checks fired.</p>
           ) : (
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
-              {flags.map((f) => <li key={f.code}>{f.label}</li>)}
-            </ul>
+            <>
+              <p className="mt-2 text-sm font-semibold text-slate-700">Handover checks that fired</p>
+              <FlagList flags={flags} className="mt-1 list-disc space-y-1 pl-5 text-sm text-slate-700" />
+            </>
           )}
         </div>
       )}

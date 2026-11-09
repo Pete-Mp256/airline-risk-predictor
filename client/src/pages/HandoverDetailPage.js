@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api, { apiError } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { toast } from 'components/ui/sonner';
-import { HandoverStatusBadge } from '../components/Badges';
+import { HandoverStatusBadge, RiskBadge } from '../components/Badges';
 import HandoverItems from '../components/HandoverItems';
 import PageHeader from '../components/PageHeader';
 import { formatDate, formatDateTime, formatTime } from '../utils/format';
@@ -44,6 +44,8 @@ export default function HandoverDetailPage() {
   const canAcknowledge = handover.status === 'Submitted' && !isSender &&
     (handover.to_manager_id === manager.manager_id || handover.department_id === manager.department_id);
   const remaining = items.filter((i) => !i.acknowledged_at).length;
+  // High risk incidents must be ticked one by one before the whole handover is acknowledged.
+  const highUnticked = items.filter((i) => i.item_type === 'Incident' && i.final_risk_level === 'High' && !i.acknowledged_at).length;
 
   async function acknowledgeItem(item) {
     setBusyId(item.item_id);
@@ -86,6 +88,11 @@ export default function HandoverDetailPage() {
               {handover.to_manager_name || `everyone in ${handover.department_name}`}
             </span>
             <HandoverStatusBadge status={handover.status} />
+            {handover.overall_risk && (
+              <span className="flex items-center gap-1 text-xs text-slate-500">
+                Handover risk <RiskBadge level={handover.overall_risk} />
+              </span>
+            )}
           </span>
         )}
         actions={<Link to={`/shifts/${handover.shift_id}`} className="btn-secondary">Open shift</Link>}
@@ -130,7 +137,12 @@ export default function HandoverDetailPage() {
                       ? `${remaining} item${remaining === 1 ? '' : 's'} not ticked yet. Acknowledging also ticks them.`
                       : 'All items ticked.'}
                   </p>
-                  <button type="button" className="btn-primary" onClick={acknowledgeAll} disabled={busy}>
+                  {highUnticked > 0 && (
+                    <p className="text-sm font-medium text-risk-high-ink" role="status">
+                      Tick the {highUnticked} High risk item{highUnticked === 1 ? '' : 's'} first.
+                    </p>
+                  )}
+                  <button type="button" className="btn-primary" onClick={acknowledgeAll} disabled={busy || highUnticked > 0}>
                     {busy ? 'Acknowledging…' : 'Acknowledge handover'}
                   </button>
                 </>

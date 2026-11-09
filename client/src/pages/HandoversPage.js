@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api, { apiError } from '../api';
-import { HandoverStatusBadge } from '../components/Badges';
+import { HandoverStatusBadge, RiskBadge } from '../components/Badges';
 import PageHeader from '../components/PageHeader';
 import { formatDate, formatDateTime } from '../utils/format';
 
@@ -75,7 +75,15 @@ export default function HandoversPage() {
                     {h.summary && <p className="mt-1 line-clamp-2 text-sm text-slate-500">{h.summary}</p>}
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <HandoverStatusBadge status={h.status} />
+                    <span className="flex flex-wrap items-center justify-end gap-2">
+                      {h.overall_risk && <RiskBadge level={h.overall_risk} />}
+                      <HandoverStatusBadge status={h.status} />
+                    </span>
+                    {h.status === 'Submitted' && h.high_items_unticked > 0 && (
+                      <span className="text-xs font-medium text-risk-high-ink">
+                        {h.high_items_unticked} High item{h.high_items_unticked === 1 ? '' : 's'} to acknowledge
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500">
                       {h.submitted_at ? `Submitted ${formatDateTime(h.submitted_at)}` : `Started ${formatDateTime(h.created_at)}`}
                     </span>

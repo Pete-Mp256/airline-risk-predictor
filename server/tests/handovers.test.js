@@ -272,6 +272,67 @@ describe('acknowledge', () => {
 
     expect(res.status).toBe(409);
   });
+
+  test('returns 409 while High risk items are unticked', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [handoverRow({ status: 'Submitted', overall_risk: 'High', high_items_unticked: 2 })] });
+
+    const res = await auth(request(app).post('/api/handovers/5/acknowledge'), incoming);
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toBe('Tick the 2 High risk items before acknowledging the handover');
+    expect(res.body.high_items_unticked).toBe(2);
+    expect(pool.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('acknowledges once every High item is ticked, with the guard repeated in the update', async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [handoverRow({ status: 'Submitted', overall_risk: 'High', high_items_unticked: 0 })] })
+      .mockResolvedValueOnce({ rows: [{ handover_id: 5, status: 'Acknowledged', items_acknowledged: 1 }] });
+
+    const res = await auth(request(app).post('/api/handovers/5/acknowledge'), incoming);
+
+    expect(res.status).toBe(200);
+    expect(pool.query.mock.calls[1][0]).toMatch(/AND NOT\s+EXISTS[\s\S]*p\.final_risk_level = 'High'/);
+  });
+
+  test('returns 409 when a High item became unticked in between', async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [handoverRow({ status: 'Submitted', high_items_unticked: 0 })] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const res = await auth(request(app).post('/api/handovers/5/acknowledge'), incoming);
+
+    expect(res.status).toBe(409);
+  });
+});
+
+describe('handover risk', () => {
+  test('GET /:id returns the overall risk and incident items High first with their ratings', async () => {
+    pool.query
+      .mockResolvedValueOnce({ rows: [handoverRow({ status: 'Submitted', overall_risk: 'High', high_items_unticked: 1 })] })
+      .mockResolvedValueOnce({ rows: ITEMS });
+
+    const res = await auth(request(app).get('/api/handovers/5'), incoming);
+
+    expect(res.status).toBe(200);
+    expect(res.body.handover.overall_risk).toBe('High');
+    expect(res.body.handover.high_items_unticked).toBe(1);
+    const sql = pool.query.mock.calls[1][0];
+    expect(sql).toMatch(/ORDER BY hi\.item_type, p\.final_risk_level DESC NULLS LAST, hi\.item_id/);
+    expect(sql).toMatch(/p\.risk_level, p\.final_risk_level,\s+p\.handover_level, p\.handover_flags, p\.top_factors/);
+  });
+
+  test('the list query computes overall risk and unticked High items per handover', async () => {
+    pool.query.mockResolvedValueOnce({ rows: [handoverRow({ status: 'Submitted', overall_risk: 'Medium', high_items_unticked: 0 })] });
+
+    const res = await auth(request(app).get('/api/handovers?box=incoming'), incoming);
+
+    expect(res.status).toBe(200);
+    expect(res.body.handovers[0].overall_risk).toBe('Medium');
+    const sql = pool.query.mock.calls[0][0];
+    expect(sql).toMatch(/MAX\(p\.final_risk_level\) AS overall_risk/);
+    expect(sql).toMatch(/FILTER \(WHERE p\.final_risk_level = 'High' AND hi\.acknowledged_at IS NULL\)/);
+  });
 });
 
 describe('managers list', () => {

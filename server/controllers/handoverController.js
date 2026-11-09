@@ -5,34 +5,59 @@ const { emailHandoverSummary } = require('../services/alerts');
 
 const BOXES = ['incoming', 'sent'];
 
-// One handover with its shift, department and the two managers' names.
+// Latest prediction for the incident item `hi`.
+const ITEM_PREDICTION = `
+  LEFT JOIN LATERAL (
+    SELECT risk_level, final_risk_level, handover_level, handover_flags, top_factors
+      FROM incident_predictions
+     WHERE incident_id = hi.incident_id
+     ORDER BY created_at DESC, prediction_id DESC LIMIT 1
+  ) p ON TRUE`;
+
+// One handover with its shift, department, the two managers' names, its overall risk (highest
+// final rating among its incidents) and how many High incidents are still unticked.
 const HANDOVER_SELECT = `
   SELECT h.*, s.department_id, s.shift_type, s.shift_date, s.start_time, s.end_time, s.staff_count,
          d.name AS department_name,
          f.first_name || ' ' || f.last_name AS from_manager_name,
-         t.first_name || ' ' || t.last_name AS to_manager_name
+         t.first_name || ' ' || t.last_name AS to_manager_name,
+         r.overall_risk, r.high_items_unticked
     FROM handovers h
     JOIN shifts s ON s.shift_id = h.shift_id
     JOIN departments d ON d.department_id = s.department_id
     JOIN shift_managers f ON f.manager_id = h.from_manager_id
-    LEFT JOIN shift_managers t ON t.manager_id = h.to_manager_id`;
+    LEFT JOIN shift_managers t ON t.manager_id = h.to_manager_id
+    LEFT JOIN LATERAL (
+      SELECT MAX(p.final_risk_level) AS overall_risk,
+             COUNT(*) FILTER (WHERE p.final_risk_level = 'High' AND hi.acknowledged_at IS NULL)::int
+               AS high_items_unticked
+        FROM handover_items hi
+        ${ITEM_PREDICTION}
+       WHERE hi.handover_id = h.handover_id AND hi.item_type = 'Incident'
+    ) r ON TRUE`;
+
+// SQL condition: handover `h` still has an unticked High incident item.
+const HAS_UNTICKED_HIGH = `
+  EXISTS (
+    SELECT 1 FROM handover_items hi
+    ${ITEM_PREDICTION}
+     WHERE hi.handover_id = h.handover_id AND hi.item_type = 'Incident'
+       AND hi.acknowledged_at IS NULL AND p.final_risk_level = 'High'
+  )`;
 
 // Items with the task or incident they point at (latest prediction for incidents).
-// Ordered Open task, Incident, Note (enum order).
+// Ordered Open task, Incident, Note (enum order); incidents High first, unpredicted last.
 async function fetchItems(handoverId) {
   const { rows } = await pool.query(
     `SELECT hi.*, t.title AS task_title, t.aircraft_reg, t.status AS task_status,
-            i.incident_type, i.occurred_at, p.risk_level, p.final_risk_level
+            i.incident_type, i.occurred_at, p.risk_level, p.final_risk_level,
+            p.handover_level, p.handover_flags, p.top_factors
        FROM handover_items hi
        LEFT JOIN tasks t ON t.task_id = hi.task_id
        LEFT JOIN incidents i ON i.incident_id = hi.incident_id
-       LEFT JOIN LATERAL (
-         SELECT risk_level, final_risk_level FROM incident_predictions
-          WHERE incident_id = hi.incident_id
-          ORDER BY created_at DESC, prediction_id DESC LIMIT 1
-       ) p ON TRUE
+       ${ITEM_PREDICTION}
       WHERE hi.handover_id = $1
-      ORDER BY hi.item_type, hi.item_id`,
+      ORDER BY hi.item_type, p.final_risk_level DESC NULLS LAST, hi.item_id`,
     [handoverId]
   );
   return rows;
@@ -107,6 +132,14 @@ function readFields(body, user, updates) {
     }
   }
   return errors;
+}
+
+// 409 when the whole handover is acknowledged with High risk incidents still unticked.
+function highUntickedConflict(res, count) {
+  return res.status(409).json({
+    message: `Tick the ${count} High risk item${count === 1 ? '' : 's'} before acknowledging the handover`,
+    high_items_unticked: count,
+  });
 }
 
 function handleDbError(err, res, next) {
@@ -317,12 +350,14 @@ async function acknowledgeHandover(req, res, next) {
   try {
     const handover = await findForAcknowledge(req, res);
     if (!handover) return;
+    if (handover.high_items_unticked > 0) return highUntickedConflict(res, handover.high_items_unticked);
 
+    // The High item guard is repeated in the UPDATE in case an item changed in between.
     const { rows } = await pool.query(
       `WITH h AS (
-         UPDATE handovers
+         UPDATE handovers h
             SET status = 'Acknowledged', acknowledged_at = NOW(), acknowledged_by = $2, updated_at = NOW()
-          WHERE handover_id = $1 AND status = 'Submitted'
+          WHERE handover_id = $1 AND status = 'Submitted' AND NOT ${HAS_UNTICKED_HIGH}
           RETURNING *
        ), items AS (
          UPDATE handover_items SET acknowledged_at = NOW()
@@ -332,7 +367,9 @@ async function acknowledgeHandover(req, res, next) {
        SELECT h.*, (SELECT COUNT(*)::int FROM items) AS items_acknowledged FROM h`,
       [handover.handover_id, req.user.manager_id]
     );
-    if (!rows[0]) return res.status(409).json({ message: 'This handover is already acknowledged' });
+    if (!rows[0]) {
+      return res.status(409).json({ message: 'This handover is already acknowledged or has High risk items to tick' });
+    }
     res.json({ handover: rows[0] });
   } catch (err) {
     next(err);

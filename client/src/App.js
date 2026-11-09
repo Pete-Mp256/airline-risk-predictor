@@ -10,6 +10,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ShiftDetailPage from './pages/ShiftDetailPage';
 import ShiftsPage from './pages/ShiftsPage';
+import { Toaster } from 'components/ui/sonner';
+import { TooltipProvider } from 'components/ui/tooltip';
 
 function NotFound() {
   return (
@@ -25,24 +27,27 @@ export default function App() {
     <BrowserRouter>
       <GoogleProvider>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/shifts" element={<ShiftsPage />} />
-              <Route path="/shifts/:id" element={<ShiftDetailPage />} />
-              <Route path="/incidents/:id" element={<IncidentDetailPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
+          <TooltipProvider delayDuration={200}>
+            <Toaster />
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/shifts" element={<ShiftsPage />} />
+                <Route path="/shifts/:id" element={<ShiftDetailPage />} />
+                <Route path="/incidents/:id" element={<IncidentDetailPage />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </TooltipProvider>
         </AuthProvider>
       </GoogleProvider>
     </BrowserRouter>

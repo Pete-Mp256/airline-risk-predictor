@@ -3,6 +3,33 @@
 @tailwind utilities;
 
 @layer base {
+  /* shadcn/ui theme tokens (HSL channels). Primary and ring are the Kenya Airways crimson #c8102e;
+     foreground is the ink colour #1f2328. Risk colours stay in tailwind.config.js. */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 213 13% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 213 13% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 13% 14%;
+    --primary: 350 85% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 213 13% 14%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 213 13% 14%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 350 85% 42%;
+    --radius: 0.75rem;
+  }
+  * {
+    @apply border-border;
+  }
   body {
     @apply min-h-screen bg-[#f3f4f6] text-ink antialiased;
   }

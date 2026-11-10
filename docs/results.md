@@ -176,3 +176,65 @@ The High example created a notification for the shift manager: "High risk incide
   drives `risk_level`, so it is close to a proxy for the label. List under limitations.
 - SHAP `effect` is relative to the predicted class: for a Low prediction "raises" means it pushes
   toward Low, not toward higher risk. The UI wording should make this clear.
+
+## Two-module system: handover rule layer
+
+The system has two modules. **Module 1, Shift Handover**, is for all staff: they start, edit, submit, tick and acknowledge handovers. **Module 2, risk prediction linked to handovers**, uses the model rating, a handover rule layer and risk shown inside the handover.
+
+**The model is trained on public data with no handover fields** (Kaggle predictive maintenance + a public incident event log; `shift_type` and `task_status` are synthetic). The model metrics above therefore say nothing about handovers. Handover quality affects only the **final** rating, through a rule layer in Node (`server/services/handoverRules.js`), never the model's own prediction.
+
+- `risk_level`: the model rating, unchanged from the Flask response.
+- `final_risk_level`: after the rule layer. Used for alerts, the High risk email, dashboard counts and badges.
+- Rule: 2 or more flags make the handover **Weak**, and Weak raises **Medium → High**. Low and High are never changed, and nothing is ever lowered.
+
+### Handover flags and thresholds
+
+"Previous handover" is the submitted handover from the most recent earlier shift in the same department (a Draft counts as none). Flags 1–5 need such a shift.
+
+| # | Flag | Fires when | Threshold |
+|---|---|---|---|
+| 1 | `carried_over_task` | Incident is on a task carried over by the previous handover | – |
+| 2 | `many_open_tasks` | Previous handover had ≥ N open tasks | N = 3 |
+| 3 | `weak_summary` | Previous summary missing or < N characters, or no submitted handover | N = 20 |
+| 4 | `late_acknowledgement` | Previous handover not acknowledged, or acknowledged ≥ N min after this shift's start | N = 30 |
+| 5 | `previous_high_incident` | Previous handover/shift had an incident with final rating High | – |
+| 6 | `edge_of_shift` | Incident within N min of the shift's start or end | N = 60 |
+| 7 | `high_workload` | Open tasks per staff member > N (skipped when staff_count is 0) | N = 2 |
+| | Weak handover | ≥ N flags | N = 2 |
+
+The thresholds are design choices, not values fitted to data, because the training data has no handover records. Each flag is tested on and off in `server/tests/handoverRules.test.js`.
+
+### How often the rule layer changes the rating
+
+```sql
+SELECT risk_level AS model_rating, final_risk_level AS final_rating, COUNT(*) AS predictions
+  FROM incident_predictions
+ WHERE final_risk_level <> risk_level
+ GROUP BY risk_level, final_risk_level
+ ORDER BY 1, 2;
+
+SELECT COUNT(*) FILTER (WHERE final_risk_level <> risk_level) AS changed,
+       COUNT(*) AS total,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE final_risk_level <> risk_level) / NULLIF(COUNT(*), 0), 1) AS pct_changed
+  FROM incident_predictions;
+```
+
+Development database on 10 Nov 2026: **1 of 40 predictions (2.5%) changed, Medium → High.** The 39 predictions made before migration 007 were backfilled with final = model rating, so this figure only reflects incidents logged since the rule layer went live. Re-run the query after peer testing for the report.
+
+### Migrations for the two modules
+
+| # | File | Adds |
+|---|---|---|
+| 006 | `006_handovers.sql` | Module 1: `handovers`, `handover_items` and their enums |
+| 007 | `007_handover_risk_rules.sql` | Module 2: `handover_flags`, `handover_level`, `final_risk_level` on `incident_predictions` |
+| 008 | `008_handover_escalation.sql` | Module 2: `handovers.escalated_at` for the unticked High items email |
+
+### Automated tests (10 Nov 2026)
+
+- Server (Jest + Supertest): 7 suites, 126 tests pass (was 4 suites / 51 on 2 Nov; adds handovers, the rule layer and jobs).
+- Flask (pytest): 6 tests pass.
+
+Discussion points for the report:
+- The two ratings are kept separate, so the model can be evaluated on its own and the rule layer's effect can be counted.
+- The rule layer only escalates, matching the earlier choice that a missed High risk incident is the costly error.
+- Limitation: the flag thresholds are not validated against real handover data. With airline handover records they could become model features instead.

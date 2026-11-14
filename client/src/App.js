@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ShiftDetailPage from './pages/ShiftDetailPage';
 import ShiftsPage from './pages/ShiftsPage';
+import { ThemeProvider } from './theme/ThemeContext';
 import { Toaster } from 'components/ui/sonner';
 import { TooltipProvider } from 'components/ui/tooltip';
 
@@ -26,34 +27,36 @@ function NotFound() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <GoogleProvider>
-        <AuthProvider>
-          <TooltipProvider delayDuration={200}>
-            <Toaster />
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/shifts" element={<ShiftsPage />} />
-                <Route path="/shifts/:id" element={<ShiftDetailPage />} />
-                <Route path="/incidents/:id" element={<IncidentDetailPage />} />
-                <Route path="/handovers" element={<HandoversPage />} />
-                <Route path="/handovers/:id" element={<HandoverDetailPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </TooltipProvider>
-        </AuthProvider>
-      </GoogleProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <GoogleProvider>
+          <AuthProvider>
+            <TooltipProvider delayDuration={200}>
+              <Toaster />
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/shifts" element={<ShiftsPage />} />
+                  <Route path="/shifts/:id" element={<ShiftDetailPage />} />
+                  <Route path="/incidents/:id" element={<IncidentDetailPage />} />
+                  <Route path="/handovers" element={<HandoversPage />} />
+                  <Route path="/handovers/:id" element={<HandoverDetailPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
+            </TooltipProvider>
+          </AuthProvider>
+        </GoogleProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

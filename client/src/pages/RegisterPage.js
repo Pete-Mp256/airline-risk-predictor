@@ -4,6 +4,7 @@ import api, { apiError } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import AuthCard from '../components/AuthCard';
 import GoogleSignIn from '../components/GoogleSignIn';
+import PasswordInput from 'components/ui/password-input';
 
 const EMPTY = { first_name: '', last_name: '', email: '', phone: '', department_id: '', password: '', confirm: '' };
 
@@ -23,7 +24,8 @@ export default function RegisterPage() {
 
   if (manager) return <Navigate to="/shifts" replace />;
 
-  const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const setValue = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
+  const set = (field) => (e) => setValue(field)(e.target.value);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -53,7 +55,7 @@ export default function RegisterPage() {
   const field = (name, label, props = {}) => (
     <div>
       <label htmlFor={name} className="label">{label}</label>
-      <input id={name} className="input" value={form[name]} onChange={set(name)}
+      <input id={name} className="input input-soft" value={form[name]} onChange={set(name)}
         aria-invalid={Boolean(errors[name])} {...props} />
       {errors[name] && <p className="field-error">{errors[name]}</p>}
     </div>
@@ -63,7 +65,7 @@ export default function RegisterPage() {
     <AuthCard
       title="Create an account"
       subtitle="Create a staff account."
-      footer={<>Already registered? <Link to="/login" className="font-medium text-accent-700 hover:underline">Log in</Link></>}
+      footer={<>Already registered? <Link to="/login" className="link">Log in</Link></>}
     >
       <GoogleSignIn text="signup_with" onSignedIn={() => navigate('/shifts', { replace: true })} />
       <form onSubmit={handleSubmit} className="mt-4 space-y-4" noValidate>
@@ -76,7 +78,7 @@ export default function RegisterPage() {
         {field('phone', 'Phone (optional)', { type: 'tel', autoComplete: 'tel' })}
         <div>
           <label htmlFor="department_id" className="label">Department</label>
-          <select id="department_id" className="input" value={form.department_id} onChange={set('department_id')}>
+          <select id="department_id" className="input input-soft" value={form.department_id} onChange={set('department_id')}>
             <option value="">Select a department</option>
             {departments.map((d) => (
               <option key={d.department_id} value={d.department_id}>{d.name}</option>
@@ -84,9 +86,20 @@ export default function RegisterPage() {
           </select>
           {errors.department_id && <p className="field-error">{errors.department_id}</p>}
         </div>
-        {field('password', 'Password (at least 8 characters)', { type: 'password', autoComplete: 'new-password' })}
-        {field('confirm', 'Confirm password', { type: 'password', autoComplete: 'new-password' })}
-        <button type="submit" className="btn-primary w-full" disabled={submitting}>
+        {/* The strength meter sits below the field, so leave room for it once typing starts. */}
+        <div className={form.password ? 'pb-12' : undefined}>
+          <label htmlFor="password" className="label">Password (at least 8 characters)</label>
+          <PasswordInput id="password" autoComplete="new-password" className="max-w-none"
+            aria-invalid={Boolean(errors.password)} value={form.password} onChange={setValue('password')} />
+          {errors.password && <p className="field-error">{errors.password}</p>}
+        </div>
+        <div>
+          <label htmlFor="confirm" className="label">Confirm password</label>
+          <PasswordInput id="confirm" autoComplete="new-password" strength={false} className="max-w-none"
+            aria-invalid={Boolean(errors.confirm)} value={form.confirm} onChange={setValue('confirm')} />
+          {errors.confirm && <p className="field-error">{errors.confirm}</p>}
+        </div>
+        <button type="submit" className="btn-primary h-12 w-full text-base" disabled={submitting}>
           {submitting ? 'Creating account…' : 'Create account'}
         </button>
       </form>

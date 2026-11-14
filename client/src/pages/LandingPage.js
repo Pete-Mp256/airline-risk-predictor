@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { ArrowRight, ArrowUpRight, BellRing, ClipboardList, Mail, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { PlaneIllustration } from '../components/Icons';
-import Logo from '../components/Logo';
+import FlyingPlane from '../components/FlyingPlane';
+import { PlaneIcon } from '../components/Icons';
 import PredictionResult from '../components/PredictionResult';
+import PublicNavbar from '../components/PublicNavbar';
+import Reveal from '../components/Reveal';
+import StepPlayer from 'components/ui/step-player';
 
 // A real prediction from the system (night shift, Base Maintenance), shown as the example.
 const EXAMPLE = {
@@ -33,108 +38,189 @@ const STEPS = [
 ];
 
 const AUTOMATIONS = [
-  {
-    title: 'High risk email',
-    text: 'Staff on the shift are emailed the rating and its reasons as soon as a High risk incident is logged.',
-  },
-  {
-    title: 'Handover summary',
-    text: 'When a shift ends, the next person on duty receives its open tasks, incidents and notes.',
-  },
-  {
-    title: 'Unfinished task reminders',
-    text: 'Staff are reminded about tasks still open shortly before their shift ends.',
-  },
-  {
-    title: 'Escalation',
-    text: 'A High risk alert that nobody reads in time is sent on to a supervisor.',
-  },
+  { icon: BellRing, title: 'High risk email', text: 'Staff on the shift are emailed the rating and its reasons as soon as a High risk incident is logged.' },
+  { icon: ClipboardList, title: 'Handover summary', text: 'When a shift ends, the next person on duty receives its open tasks, incidents and notes.' },
+  { icon: Mail, title: 'Task reminders', text: 'Staff are reminded about tasks still open shortly before their shift ends.' },
+  { icon: ShieldAlert, title: 'Escalation', text: 'A High risk alert that nobody reads in time is sent on to a supervisor.' },
 ];
+
+const NAV_LINKS = [
+  { href: '#how', label: 'How it works' },
+  { href: '#features', label: 'Features' },
+];
+
+function SectionHeading({ title, text }) {
+  return (
+    <Reveal className="mx-auto max-w-xl text-center">
+      <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-5xl dark:text-white">{title}</h2>
+      <p className="mt-4 text-base leading-relaxed text-slate-500 sm:text-lg dark:text-neutral-400">{text}</p>
+    </Reveal>
+  );
+}
+
+function HowItWorks() {
+  const [step, setStep] = useState(0);
+  // Picking a step by hand restarts the player there (a new key resets its progress bar).
+  const [run, setRun] = useState(0);
+  const pick = (index) => {
+    setStep(index);
+    setRun((r) => r + 1);
+  };
+  return (
+    <section id="how" className="scroll-mt-24 px-4 py-24 sm:px-8 sm:py-32">
+      <SectionHeading title="How it works" text="Three steps between logging an incident and handing it over." />
+      <Reveal delay={0.1} className="mx-auto mt-14 max-w-5xl">
+        <ol className="grid gap-4 md:grid-cols-3">
+          {STEPS.map((item, index) => {
+            const active = index === step;
+            return (
+              <li key={item.title}>
+                <button type="button" onClick={() => pick(index)} aria-current={active ? 'step' : undefined}
+                  className={`bento h-full w-full p-6 text-left transition-all duration-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 ${active
+                    ? 'opacity-100 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.25)] md:-translate-y-1'
+                    : 'opacity-60 hover:opacity-90'}`}>
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors ${active
+                    ? 'bg-accent-600 text-white'
+                    : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-neutral-400'}`}>
+                    {index + 1}
+                  </span>
+                  <h3 className="mt-5 text-lg font-semibold text-ink dark:text-white">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-neutral-400">{item.text}</p>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="mt-8 flex justify-center">
+          <StepPlayer key={run} steps={STEPS.map((s) => ({ label: s.title }))} value={step} onValueChange={setStep}
+            defaultPlaying loop seekable duration={5000} size={40} />
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+function Features() {
+  return (
+    <section id="features" className="scroll-mt-24 px-4 pb-24 sm:px-8 sm:pb-32">
+      <SectionHeading title="Reasons, not just ratings"
+        text="Every rating comes with the readings behind it, and the alerts go out on their own." />
+
+      <div className="mx-auto mt-14 grid max-w-5xl gap-4 lg:grid-cols-3">
+        <Reveal className="bento p-2 lg:col-span-2 lg:row-span-2">
+          <figure className="flex h-full flex-col">
+            <div className="flex-1 rounded-[1.25rem] bg-[#f4f4f6] p-5 sm:p-7 dark:bg-[#1a1a1a]">
+              <p className="text-xs text-slate-500 dark:text-neutral-500">Night shift, Base Maintenance</p>
+              <p className="mb-5 mt-0.5 font-semibold text-ink dark:text-white">Hardware fault on a pending task</p>
+              <PredictionResult prediction={EXAMPLE} />
+            </div>
+            <figcaption className="flex items-center justify-between px-4 py-4">
+              <span className="font-semibold text-ink dark:text-white">Example prediction</span>
+              <span className="text-sm text-slate-500 dark:text-neutral-500">Top 3 reasons, explained</span>
+            </figcaption>
+          </figure>
+        </Reveal>
+
+        {AUTOMATIONS.map(({ icon: Icon, title, text }, i) => (
+          <Reveal key={title} delay={0.05 * (i + 1)} className="bento p-6">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-50 text-accent-700 dark:bg-accent-600/15 dark:text-accent-400">
+              <Icon className="h-5 w-5" />
+            </span>
+            <h3 className="mt-5 font-semibold text-ink dark:text-white">{title}</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-500 dark:text-neutral-400">{text}</p>
+          </Reveal>
+        ))}
+
+        <Reveal delay={0.25} className="bento bg-accent-600 p-6 text-white ring-0 dark:bg-accent-700">
+          <h3 className="text-xl font-semibold">Ready for the next handover?</h3>
+          <p className="mt-1.5 text-sm text-white/80">Create a staff account and log your first incident.</p>
+          <Link to="/register"
+            className="mt-auto inline-flex items-center gap-1.5 self-start pt-6 text-sm font-semibold hover:underline">
+            Sign up <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
 
 export default function LandingPage() {
   const { manager, loading } = useAuth();
   if (!loading && manager) return <Navigate to="/shifts" replace />;
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="livery" aria-hidden="true" />
-      <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-8">
-        <Logo />
-        <nav className="flex items-center gap-2" aria-label="Account">
-          <Link to="/login" className="btn-secondary">Log in</Link>
-          <Link to="/register" className="btn-primary hidden sm:inline-flex">Create account</Link>
-        </nav>
-      </header>
+    <div className="min-h-screen overflow-x-hidden bg-white dark:bg-black">
+      <PublicNavbar links={NAV_LINKS} />
 
       <main>
-        <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-8 sm:px-8 lg:grid-cols-[1.1fr_1fr] lg:pt-14">
-          <div>
-            <h1 className="max-w-xl text-4xl font-bold leading-[1.02] tracking-tight text-ink sm:text-6xl"
-              style={{ fontStretch: '78%' }}>
-              Know which incidents put the next shift at risk.
-            </h1>
-            <p className="mt-5 max-w-lg text-lg leading-relaxed text-slate-600">
-              Log maintenance incidents at shift handover. Each one is rated Low, Medium or High risk,
-              with the readings that drove the rating, so the incoming shift can act before a problem
-              reaches the flight schedule.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/register" className="btn-primary px-6 py-2.5 text-base">Create an account</Link>
-              <Link to="/login" className="btn-secondary px-6 py-2.5 text-base">Log in</Link>
-            </div>
-          </div>
+        {/* Hero */}
+        <section className="p-2 sm:p-3">
+          <div className="panel flex min-h-[calc(100svh-1rem)] flex-col items-center justify-center px-4 pb-20 pt-28 text-center sm:min-h-[calc(100svh-1.5rem)]">
+            <PlaneIcon aria-hidden="true" strokeWidth="0.6"
+              className="pointer-events-none absolute left-1/2 top-1/2 h-[44rem] w-[44rem] -translate-x-1/2 -translate-y-1/2 -rotate-12 text-black/[0.035] dark:text-white/[0.04]" />
+            <FlyingPlane top="12%" duration={18} />
+            <FlyingPlane top="68%" duration={24} delay={9} size="h-8" className="opacity-60" />
 
-          <div className="relative lg:pt-6">
-            <PlaneIllustration className="pointer-events-none absolute -top-20 right-0 hidden h-20 w-auto -rotate-6 drop-shadow-lg sm:block" />
-            <figure className="card bg-white shadow-[0_12px_32px_-12px_rgba(31,35,40,0.25)]">
-              <figcaption className="mb-4 border-b border-slate-200 pb-3">
-                <p className="text-xs text-slate-500">Example prediction, night shift, Base Maintenance</p>
-                <p className="mt-0.5 font-semibold text-ink">Hardware fault on a pending task</p>
-              </figcaption>
-              <PredictionResult prediction={EXAMPLE} />
-            </figure>
-          </div>
-        </section>
-
-        <section className="border-t border-slate-200 bg-[#f3f4f6]">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl" style={{ fontStretch: '85%' }}>
-              How it works
-            </h2>
-            <ol className="mt-8 grid gap-8 md:grid-cols-3">
-              {STEPS.map((step, index) => (
-                <li key={step.title} className="border-t-2 border-accent-600 pt-4">
-                  <p className="text-sm font-semibold text-accent-700">Step {index + 1}</p>
-                  <h3 className="mt-1 text-lg font-semibold text-ink">{step.title}</h3>
-                  <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-600">{step.text}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-8">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl" style={{ fontStretch: '85%' }}>
-            What happens without anyone asking
-          </h2>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Alerts and handover emails go out on their own, so nothing depends on someone remembering to check.
-          </p>
-          <dl className="mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-2">
-            {AUTOMATIONS.map((item) => (
-              <div key={item.title} className="border-l-2 border-slate-200 pl-4">
-                <dt className="font-semibold text-ink">{item.title}</dt>
-                <dd className="mt-1 text-sm leading-relaxed text-slate-600">{item.text}</dd>
+            <Reveal className="relative">
+              <span className="eyebrow">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-600" /> Aircraft maintenance
+              </span>
+            </Reveal>
+            <Reveal delay={0.08} className="relative">
+              <h1 className="mt-6 text-[3.25rem] font-extrabold leading-[0.95] tracking-[-0.045em] text-ink sm:text-8xl lg:text-[8.5rem] dark:text-white">
+                Shift Handover
+              </h1>
+              <h2 className="mt-2 bg-gradient-to-r from-accent-600 via-accent-500 to-accent-700 bg-clip-text pb-2 text-[2.5rem] font-extrabold leading-[1] tracking-[-0.04em] text-transparent sm:text-7xl lg:text-[6rem] dark:from-accent-500 dark:via-accent-400 dark:to-accent-600">
+                Risk Prediction
+              </h2>
+            </Reveal>
+            <Reveal delay={0.16} className="relative">
+              <p className="mx-auto mt-6 max-w-lg text-base leading-relaxed text-slate-500 sm:text-lg dark:text-neutral-400">
+                Every incident logged at handover is rated Low, Medium or High risk, with the readings
+                behind the rating.
+              </p>
+              <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+                <Link to="/register" className="btn-primary h-12 px-7 text-base">
+                  Get started <ArrowRight className="h-4 w-4" />
+                </Link>
+                <a href="#how" className="btn-secondary h-12 px-7 text-base">See how it works</a>
               </div>
-            ))}
-          </dl>
+            </Reveal>
+          </div>
         </section>
+
+        <HowItWorks />
+        <Features />
       </main>
 
-      <footer className="border-t border-slate-200">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-slate-500 sm:px-8">
-          <p>Incident Risk Predictor, a final-year project at Strathmore University.</p>
-          <Link to="/login" className="link">Log in</Link>
+      {/* Footer: giant title over a crimson glow. */}
+      <footer className="p-2 sm:p-3">
+        <div className="panel overflow-hidden bg-black px-6 pt-16 text-white ring-0 sm:px-10 dark:bg-[#0b0b0b] dark:ring-1">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            <div className="absolute -bottom-40 left-1/4 h-96 w-[70%] rounded-full bg-accent-600/70 blur-[120px]" />
+            <div className="absolute -bottom-24 right-0 h-72 w-1/2 rounded-full bg-accent-500/50 blur-[100px]" />
+          </div>
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <span className="flex items-center gap-2 font-semibold">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-600">
+                <PlaneIcon className="h-4 w-4" />
+              </span>
+              Incident Risk
+            </span>
+            <nav aria-label="Footer" className="flex gap-6 text-sm text-white/60">
+              <a href="#how" className="hover:text-white">How it works</a>
+              <a href="#features" className="hover:text-white">Features</a>
+              <Link to="/login" className="hover:text-white">Log in</Link>
+              <Link to="/register" className="hover:text-white">Sign up</Link>
+            </nav>
+          </div>
+          <p aria-hidden="true"
+            className="relative mt-12 select-none whitespace-nowrap text-[17vw] font-extrabold leading-[0.85] tracking-[-0.06em] sm:text-[15vw]">
+            Handover
+          </p>
+          <p className="relative py-6 text-xs text-white/60">
+            Incident Risk Predictor · a final-year project at Strathmore University
+          </p>
         </div>
       </footer>
     </div>

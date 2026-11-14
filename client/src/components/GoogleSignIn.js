@@ -42,10 +42,10 @@ export default function GoogleSignIn({ text = 'signin_with', onSignedIn }) {
           width="320"
         />
       </div>
-      <div className="flex items-center gap-3 text-xs uppercase tracking-[0.12em] text-slate-400">
-        <span className="h-px flex-1 bg-slate-200" />
+      <div className="flex items-center gap-3 text-xs uppercase tracking-[0.12em] text-slate-400 dark:text-neutral-500">
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
         or with email
-        <span className="h-px flex-1 bg-slate-200" />
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
       </div>
     </div>
   );

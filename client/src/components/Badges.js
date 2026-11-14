@@ -18,7 +18,7 @@ const BASE = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs 
 // Risk level with a text label (not colour alone). Shows "Not predicted" when missing.
 export function RiskBadge({ level, confidence, size = 'sm' }) {
   if (!level) {
-    return <span className={`${BASE} bg-white text-slate-500 ring-slate-300`}>Not predicted</span>;
+    return <span className={`${BASE} bg-white text-slate-500 ring-slate-300 dark:bg-white/5 dark:text-neutral-400 dark:ring-white/15`}>Not predicted</span>;
   }
   const large = size === 'lg' ? 'px-3 py-1 text-sm' : '';
   return (

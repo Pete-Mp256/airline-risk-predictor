@@ -1,10 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/**/*.{js,jsx}'],
+  // Dark mode follows the `dark` class on <html>, set by ThemeProvider (and an inline script in index.html).
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Archivo', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      keyframes: {
+        // A plane crossing the screen on a gentle arc; see FlyingPlane.js.
+        fly: {
+          '0%': { transform: 'translate(-30vw, 30px) rotate(6deg)' },
+          '50%': { transform: 'translate(50vw, -25px) rotate(-1deg)' },
+          '100%': { transform: 'translate(130vw, 5px) rotate(-5deg)' },
+        },
+      },
+      animation: {
+        fly: 'fly var(--fly-duration, 16s) linear infinite',
       },
       // shadcn/ui radius scale, driven by --radius in index.css.
       borderRadius: {
